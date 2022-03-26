@@ -99,9 +99,7 @@ The last column of the data frame contains data on crude oil prices from 1861 to
 df_oilprices <- read.csv("../../data/crude-oil-prices.csv", header=TRUE, sep=",")
 colnames(df_oilprices) <- c(names(df_oilprices[1:3]), 'Price') 
 
-df_oilprices %>%
-  kbl() %>%
-  kable_styling()
+str(df_oilprices)
 
 ```
 
@@ -155,7 +153,6 @@ colnames(df_derivatives) <- c('Year', 'Derivative')
 
 str(df_derivatives)
 
-
 ```
 
 ```{r}
@@ -189,8 +186,7 @@ Reference and data: <https://ourworldindata.org/grapher/crude-oil-prices>
 coal_prod <- read_csv("../../data/coal-production-by-country.csv", col_names=TRUE)
 colnames(coal_prod) <- c(names(coal_prod[1:3]), 'Production')
 
-coal_prod %>%
-  kbl() %>%
+kable(head(coal_prod)) %>%
   kable_styling()
 ```
 
@@ -198,7 +194,7 @@ coal_prod %>%
 is_tibble(coal_prod)
 ```
 
-## 2. Count the number of countries available in the file and produce a barplot with the number of entries for each country
+## 2. Count the number of countries available in the file and produce a barplot with the number of entries for each country
 
 ```{r}
 countries <- unique(coal_prod$Entity)
