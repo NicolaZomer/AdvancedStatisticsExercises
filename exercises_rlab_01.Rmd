@@ -2,7 +2,9 @@
 title: "Exercises Laboratory Session 01"
 author: "Nicola Zomer"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: html_notebook
+output:
+  html_notebook: default
+  pdf_document: default
 ---
 
 ```{r}
