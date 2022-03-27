@@ -107,7 +107,7 @@ str(df_oilprices)
 
 ```{r}
 gg <- ggplot(df_oilprices, aes(x=Year, y=Price))+
-  geom_point(col='navyblue') + 
+  geom_point(col='navyblue')+
   labs(title="Crude Oil Prices from 1861 to 2020 ($/barrel)", 
        y="Price",
        x='Year', 
@@ -157,7 +157,7 @@ str(df_derivatives)
 
 ```{r}
 gg <- ggplot(df_derivatives, aes(x=Year, y=Derivative))+
-  geom_point(col='navyblue') + 
+  geom_line(col='navyblue', size=1) + 
   labs(title="Annual Variation of Crude Oil Prices from 1861 to 2020 ($/barrel)", 
        y=TeX("$\\Delta$Price"),
        x='Year', 
@@ -219,11 +219,67 @@ gg
 
 ```
 
+For the following items select only the years $$\geq$$ 1970.
+
 ## 3. Selecting only the year after 1970, determine the total integrated production for each country and print the top 5 countries with highest coal productions
+
+```{r}
+# select only the years after 1970
+coal_prod_1970 <- coal_prod[coal_prod['Year']>1970, ]
+
+# total integrated production for each country
+int_prod_1970 <- aggregate(coal_prod_1970$Production, by=list(coal_prod_1970$Entity), FUN=sum)
+colnames(int_prod_1970) <- c('Country', 'IntProd')
+
+# top 5 countries
+int_prod_1970[order(int_prod_1970$IntProd, decreasing = TRUE)[1:5], ] %>%
+  kbl() %>%
+  kable_styling()
+
+```
 
 ## 4. For the 5 top Countries, create a plot of production as a function of time
 
+```{r}
+# reduced dataframe
+sel_countries <- c('World', 'Asia Pacific', 'Asia and Oceania', 'China', 'OECD')
+df_sel <- coal_prod_1970[coal_prod_1970$Entity %in% sel_countries, ]
+
+# inspect it
+str(df_sel)
+cat('\nEntities in df_sel:', unique(df_sel$Entity))
+
+```
+
+```{r}
+colors <- c('darkred', 'deepskyblue', 'darkgreen', 'darkgoldenrod', 'darkblue')
+
+ggplot(df_sel, aes(x = Year, y = Production)) + 
+  geom_line(aes(color = Entity), size=0.6) + 
+  scale_color_manual(values = colors)+ 
+  labs(title="Production vs time for the top 5 countries", 
+       caption = "Source: https://ourworldindata.org/grapher/coal-production-by-country") +
+  theme_bw()
+
+```
+
 ## 5. Generate a plot with the cumulative sum of the World's coal production over the years
+
+```{r}
+world_cum <- cumsum(coal_prod_1970$Production[coal_prod_1970$Entity=='World'])
+years <- coal_prod_1970$Year[coal_prod_1970$Entity=='World']
+
+ggplot() + 
+  geom_line(aes(x=years, y=world_cum), col='navyblue', size=1) + 
+  labs(title="Cumulative World's coal production", 
+       x="Year",
+       y="Production", 
+       caption = "Source: https://ourworldindata.org/grapher/coal-production-by-country") +
+  theme_bw()
+  
+  
+
+```
 
 Reference and data: <https://ourworldindata.org/grapher/coal-production-by-country>
 
@@ -232,6 +288,10 @@ Reference and data: <https://ourworldindata.org/grapher/coal-production-by-count
 ## File 'vaccinations-by-manufacturer.csv'
 
 ### 1. Filter() the original tibble by selecting the following countries: Italy
+
+```{r}
+
+```
 
 ### 2. Plot the number of vaccines given as a function of time for the different vaccine manufacturer
 
