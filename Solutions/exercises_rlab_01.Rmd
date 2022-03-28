@@ -180,7 +180,7 @@ Reference and data: <https://ourworldindata.org/grapher/crude-oil-prices>
 
 # Exercise 3 - World Coal Production
 
-## 1. Write R code that is able to read the file and import it in a tibble structure
+## 1. Write R code that is able to read the file and import it in a tibble structure
 
 ```{r}
 coal_prod <- read_csv("../../data/coal-production-by-country.csv", col_names=TRUE)
@@ -291,13 +291,172 @@ Reference and data: <https://ourworldindata.org/grapher/coal-production-by-count
 
 ```{r}
 
+# load the data
+vacc_bymanu <- read_csv("../../data/vaccinations-by-manufacturer.csv", locale=locale(encoding="UTF-16LE"))
+
+glimpse(vacc_bymanu)
+```
+
+```{r}
+
+# select only data related to Italy
+vacc_Italy <- vacc_bymanu[vacc_bymanu$location=='Italy',]
+head(vacc_Italy) %>%
+  kbl() %>%
+  kable_styling()
+
 ```
 
 ### 2. Plot the number of vaccines given as a function of time for the different vaccine manufacturer
 
+```{r}
+
+# inspect the manufacturers
+unique(vacc_Italy$vaccine)
+```
+
+```{r}
+
+colors <- c('darkred', 'deepskyblue', 'darkgreen', 'darkgoldenrod', 'darkblue')
+
+gg <- ggplot(vacc_Italy, aes(x = date, y = total_vaccinations)) + 
+  geom_line(aes(color = vaccine), size=0.6) + 
+  scale_color_manual(values = colors)+ 
+  labs(title="Number of vaccines for different manufacturers in Italy", 
+       x='Time',
+       y='Number of vaccinations',
+       color='Vaccine', 
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+  
+plot(gg)
+```
+
 ### 3. From the same tibble plot the total number of vaccines shot per day in Italy
 
+```{r}
+
+tot_vacc_Italy <- aggregate(vacc_Italy$total_vaccinations, by=list(vacc_Italy$date), FUN=sum)
+colnames(tot_vacc_Italy) <- c('date', 'tot_vaccinations')
+
+gg <- ggplot(tot_vacc_Italy, aes(x = date, y = tot_vaccinations)) + 
+  geom_line(col='navyblue', size=1) + 
+  labs(title="Number of vaccines per day in Italy", 
+       x='Time',
+       y='Number of vaccinations',
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+  
+plot(gg)
+
+```
+
 ### 4. Do the same exercise for the following countries: Germany and United States of America
+
+Germany
+
+```{r}
+
+# select only data related to Germany
+vacc_Germany <- vacc_bymanu[vacc_bymanu$location=='Germany',]
+
+
+
+# number of vaccines for the different manufacturers
+colors <- c('darkred', 'deepskyblue', 'darkgreen', 'darkgoldenrod', 'darkblue')
+
+gg1 <- ggplot(vacc_Germany, aes(x = date, y = total_vaccinations)) + 
+  geom_line(aes(color = vaccine), size=0.6) + 
+  scale_color_manual(values = colors)+ 
+  labs(title="Number of vaccines for different manufacturers in Germany", 
+       x='Time',
+       y='Number of vaccinations',
+       color='Vaccine', 
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+
+
+
+# total number of vaccines per day in Germany
+tot_vacc_Germany <- aggregate(vacc_Germany$total_vaccinations, by=list(vacc_Germany$date), FUN=sum)
+colnames(tot_vacc_Germany) <- c('date', 'tot_vaccinations')
+
+gg2 <- ggplot(tot_vacc_Germany, aes(x = date, y = tot_vaccinations)) + 
+  geom_line(col='navyblue', size=1) + 
+  labs(title="Number of vaccines per day in Germany", 
+       x='Time',
+       y='Number of vaccinations',
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+
+
+
+# plot the results
+plot(gg1)
+plot(gg2)
+```
+
+United States of America
+
+```{r}
+
+# select only data related to Germany
+vacc_USA <- vacc_bymanu[vacc_bymanu$location=='United States',]
+
+
+
+# number of vaccines for the different manufacturers
+colors <- c('darkred', 'deepskyblue', 'darkgreen', 'darkgoldenrod', 'darkblue')
+
+gg1 <- ggplot(vacc_USA, aes(x = date, y = total_vaccinations)) + 
+  geom_line(aes(color = vaccine), size=0.6) + 
+  scale_color_manual(values = colors)+ 
+  labs(title="Number of vaccines for different manufacturers in USA", 
+       x='Time',
+       y='Number of vaccinations',
+       color='Vaccine', 
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+
+
+
+# total number of vaccines per day in USA
+tot_vacc_USA <- aggregate(vacc_USA$total_vaccinations, by=list(vacc_USA$date), FUN=sum)
+colnames(tot_vacc_USA) <- c('date', 'tot_vaccinations')
+
+gg2 <- ggplot(tot_vacc_USA, aes(x = date, y = tot_vaccinations)) + 
+  geom_line(col='navyblue', size=1) + 
+  labs(title="Number of vaccines per day in USA", 
+       x='Time',
+       y='Number of vaccinations',
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+
+
+
+# plot the results
+plot(gg1)
+plot(gg2)
+
+```
 
 Data: <https://github.com/owid/covid-19-data/blob/master/public/data/vaccinations/vaccinations-by-manufacturer.csv>
 
@@ -305,7 +464,15 @@ Data: <https://github.com/owid/covid-19-data/blob/master/public/data/vaccination
 
 ### 1. Selecting all the European countries in the tibble, plot the number of daily vaccinations per million as a function of date
 
+```{r}
+
+```
+
 ### 2. Study the data structure and produce few relevant plots of your taste
+
+```{r}
+
+```
 
 Data: <https://github.com/owid/covid-19-data/blob/master/public/data/vaccinations/vaccinations.csv>
 
