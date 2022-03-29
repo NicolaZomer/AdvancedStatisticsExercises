@@ -107,7 +107,7 @@ str(df_oilprices)
 
 ```{r}
 gg <- ggplot(df_oilprices, aes(x=Year, y=Price))+
-  geom_point(col='navyblue')+
+  geom_line(col='navyblue', size=0.8)+
   labs(title="Crude Oil Prices from 1861 to 2020 ($/barrel)", 
        y="Price",
        x='Year', 
@@ -157,7 +157,7 @@ str(df_derivatives)
 
 ```{r}
 gg <- ggplot(df_derivatives, aes(x=Year, y=Derivative))+
-  geom_line(col='navyblue', size=1) + 
+  geom_line(col='navyblue', size=0.8) + 
   labs(title="Annual Variation of Crude Oil Prices from 1861 to 2020 ($/barrel)", 
        y=TeX("$\\Delta$Price"),
        x='Year', 
@@ -238,26 +238,45 @@ int_prod_1970[order(int_prod_1970$IntProd, decreasing = TRUE)[1:5], ] %>%
 
 ```
 
+As some elements are not countries, I want to remove these rows, and repeat the process until I get 5 countries.
+
+```{r}
+removed_elements = c('World', 'Asia Pacific', 'Asia and Oceania', 'OECD',
+                     'North America', 'Eurasia', 'Europe', 'EU-28', 'CIS', 'Africa',
+                     'South Africa'
+                     ) # not all non-countries entries
+
+int_prod_1970 <- int_prod_1970[!int_prod_1970$Country %in% removed_elements, ]
+
+# top 5 countries
+int_prod_1970[order(int_prod_1970$IntProd, decreasing = TRUE)[1:5], ] %>%
+  kbl() %>%
+  kable_styling()
+
+top5_countries <- int_prod_1970$Country[order(int_prod_1970$IntProd, decreasing = TRUE)[1:5]]
+
+
+```
+
 ## 4. For the 5 top Countries, create a plot of production as a function of time
 
 ```{r}
-# reduced dataframe
-sel_countries <- c('World', 'Asia Pacific', 'Asia and Oceania', 'China', 'OECD')
-df_sel <- coal_prod_1970[coal_prod_1970$Entity %in% sel_countries, ]
 
-# inspect it
-str(df_sel)
-cat('\nEntities in df_sel:', unique(df_sel$Entity))
+# create the reduced dataframe
+df_top5 <- coal_prod_1970[coal_prod_1970$Entity %in% top5_countries, ]
 
+# inspect the structure of the dataframe
+str(df_top5)
 ```
 
 ```{r}
 colors <- c('darkred', 'deepskyblue', 'darkgreen', 'darkgoldenrod', 'darkblue')
 
-ggplot(df_sel, aes(x = Year, y = Production)) + 
+ggplot(df_top5, aes(x = Year, y = Production)) + 
   geom_line(aes(color = Entity), size=0.6) + 
   scale_color_manual(values = colors)+ 
   labs(title="Production vs time for the top 5 countries", 
+       y="Coal Production (TWh)",
        caption = "Source: https://ourworldindata.org/grapher/coal-production-by-country") +
   theme_bw()
 
@@ -292,7 +311,8 @@ Reference and data: <https://ourworldindata.org/grapher/coal-production-by-count
 ```{r}
 
 # load the data
-vacc_bymanu <- read_csv("../../data/vaccinations-by-manufacturer.csv", locale=locale(encoding="UTF-16LE"))
+urlfile = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations-by-manufacturer.csv"
+vacc_bymanu <- read_csv(url(urlfile), col_names=TRUE)
 
 glimpse(vacc_bymanu)
 ```
@@ -327,9 +347,10 @@ gg <- ggplot(vacc_Italy, aes(x = date, y = total_vaccinations)) +
        y='Number of vaccinations',
        color='Vaccine', 
        caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
-  scale_x_continuous(
+  scale_y_continuous(trans='log10') +
+  scale_x_date(
     breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
-  ) +
+    date_labels="%b-%y")+
   theme_bw()
   
 plot(gg)
@@ -341,6 +362,7 @@ plot(gg)
 
 tot_vacc_Italy <- aggregate(vacc_Italy$total_vaccinations, by=list(vacc_Italy$date), FUN=sum)
 colnames(tot_vacc_Italy) <- c('date', 'tot_vaccinations')
+
 
 gg <- ggplot(tot_vacc_Italy, aes(x = date, y = tot_vaccinations)) + 
   geom_line(col='navyblue', size=1) + 
@@ -354,6 +376,23 @@ gg <- ggplot(tot_vacc_Italy, aes(x = date, y = tot_vaccinations)) +
   theme_bw()
   
 plot(gg)
+
+```
+
+Due to the the missing information about AstraZeneca after Jan 22, the cumulative number of vaccines decreases at a certain point and does strange oscillations.
+
+This implies that if we try to get the number of vaccines per day by taking the difference between consecutive days, we get negative results, that is absurd. Let's fix this.
+
+TODO....
+
+(also I want then to define a function for plotting, and fix the cumulative in the next plots)
+
+```{r}
+tot_vacc_Italy_perday <- diff(tot_vacc_Italy$tot_vaccinations)
+dates <- tot_vacc_Italy$date[2:length(tot_vacc_Italy$date)]
+
+tot_vacc_Italy_perday <- data.frame(dates, tot_vacc_Italy_perday)
+colnames(tot_vacc_Italy_perday) <- c('date', 'tot_vaccinations')
 
 ```
 
@@ -463,6 +502,15 @@ Data: <https://github.com/owid/covid-19-data/blob/master/public/data/vaccination
 ## File 'vaccinations.csv'
 
 ### 1. Selecting all the European countries in the tibble, plot the number of daily vaccinations per million as a function of date
+
+```{r}
+
+# load the data
+urlfile = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations.csv"
+df_vacc <- read_csv(url(urlfile), col_names=TRUE)
+
+glimpse(df_vacc)
+```
 
 ```{r}
 
