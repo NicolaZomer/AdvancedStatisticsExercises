@@ -617,7 +617,9 @@ plot(USA_num)
 plot(USA_perday)
 
 ```
-Note that around March 2022 there are some outliers for Johnson & Johnson. These cause an incorrect behavior in the vaccine per day curve, which shows negative values over that period, due to a negative difference in the total number of vaccine given. To solve this problem, I will consider the trend of the total number of Johnson & Johnson vaccines linear over that time interval. 
+
+
+Notice that around March 2022 there are some outliers for Johnson & Johnson. These cause an incorrect behavior in the vaccine per day curve, which shows negative values over that period, due to a negative difference in the total number of vaccine given. To solve this problem, I will consider the trend of the total number of Johnson & Johnson vaccines linear over that time interval.
 
 ```{r}
 
@@ -661,6 +663,7 @@ if (first_date == '2022-03-01') {
 
 
 ```
+
 ```{r}
 
 # fix it
@@ -714,7 +717,6 @@ plot(USA_perday)
 
 ```
 
-
 Data: <https://github.com/owid/covid-19-data/blob/master/public/data/vaccinations/vaccinations-by-manufacturer.csv>
 
 ## File 'vaccinations.csv'
@@ -749,8 +751,6 @@ gg <- ggplot(vacc_permillion, aes(x = date, y = vaccinations)) +
 plot(gg)
 
 ```
-
-
 
 ### 2. Study the data structure and produce few relevant plots of your taste
 
