@@ -3,8 +3,15 @@ title: "Exercises Laboratory Session 01"
 author: "Nicola Zomer"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  html_document: default
+  html_document: 
+    default
 ---
+
+```{r setup-chunk}
+knitr::opts_chunk$set(dev = "ragg_png")
+
+```
+
 
 ```{r}
 # tidyverse
@@ -20,7 +27,7 @@ library(kableExtra)
 
 ```
 
-In the whole notebook I will use *kable* to show the tables, as it allows to keep the table formatting also in the html file, which I use to share my work on GitHub. For a similar reason, I will never print an entire table.
+In the whole notebook I will use *kable* to show the tables, as it allows to keep the table formatting also in the html file, which I use to share my work on GitHub. For a similar reason, I will never print an entire table. In the future exercises I will define a function to do it. 
 
 # Exercise 1 - Vectors and data frames
 
@@ -93,7 +100,7 @@ Reference and data: <https://en.wikipedia.org/wiki/List_of_lochs_of_Scotland>
 
 # Exercise 2 - Crude Oil Production
 
-## 1. Write R code that is able to read the file and import it in a data frame structure
+## 1. Write R code that is able to read the file and import it in a data frame structure
 
 The last column of the data frame contains data on crude oil prices from 1861 to 2020, measured in US dollars per barrel.
 
@@ -125,8 +132,8 @@ gg <- ggplot(df_oilprices, aes(x=Year, y=Price))+
   )+
   theme_bw()
 
-
 plot(gg)
+
 ```
 
 ## 3. Which is the highest price in history ? When did it occur ?
@@ -139,7 +146,7 @@ glue('Highest price in hystory: {format(highest_price, digits=5)} $/barrel.\n
   It occured in {highest_price_year}.')
 ```
 
-## 4. Plot the derivative of the curve, simply evaluated with the finite difference formula
+## 4. Plot the derivative of the curve, simply evaluated with the finite difference formula
 
 $$
 \frac{\partial price}{\partial year} = price_{j+1}-price{j}
