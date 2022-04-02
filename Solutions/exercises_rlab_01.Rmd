@@ -13,14 +13,17 @@ knitr::opts_chunk$set(dev = "ragg_png")
 ```
 
 
-```{r}
+```{r, include=FALSE}
 # tidyverse
-library(ggplot2)
-library(readr)
-library(tibble)
+library(tidyverse)
+# library(ggplot2)
+# library(readr)
+# library(tibble)
 library(glue)
+# library(dplyr)
 
 # others
+library(gridExtra)
 library(latex2exp)
 library(scales)
 library(kableExtra)
@@ -214,7 +217,7 @@ cat('Number of countries:', length(countries))
 ```{r, fig.height = 25, fig.width = 7}
 
 gg <- ggplot(data=coal_prod, aes(x=Entity)) +
-  geom_bar(stat = "count", width=0.7, fill="steelblue") + 
+  geom_bar(stat = "count", width=0.7, fill="dodgerblue3", alpha=0.8) + 
   coord_flip() +
   scale_x_discrete(limits=rev) +
   labs(title="Number of entries for each country", 
@@ -374,7 +377,7 @@ colnames(tot_vacc_Italy) <- c('date', 'tot_vaccinations')
 
 
 gg <- ggplot(tot_vacc_Italy, aes(x = date, y = tot_vaccinations)) + 
-  geom_line(col='dodgerblue3', size=1) + 
+  geom_line(col='dodgerblue3', size=0.8) + 
   labs(title="Total number of vaccines in Italy", 
        x='Date',
        y='Number of vaccinations',
@@ -414,9 +417,7 @@ Let's see if we know the total Oxford/Astrazeneca vaccinations on these days.
 
 ```{r}
 for (i in seq_along(problematic_dates)){
-  tmp <- vacc_Italy[
-    (vacc_Italy$date==problematic_dates[i]) & 
-      (vacc_Italy$vaccine=='Oxford/AstraZeneca'), ]
+  tmp <- vacc_Italy[(vacc_Italy$date==problematic_dates[i]) & (vacc_Italy$vaccine=='Oxford/AstraZeneca'), ]
   is_not_empty <- as.logical(nrow(tmp))
   print(paste(problematic_dates[i], ': is it NOT empty?', is_not_empty))
 }
@@ -442,12 +443,9 @@ vacc_IT_fixed = vacc_Italy[vacc_Italy$date < '2022-01-01', ]
 
 # add missing data
 for (date in seq(as.Date("2021-01-14"), as.Date("2021-12-31"), by='day')){
-  if (nrow(vacc_IT_fixed[
-    (vacc_IT_fixed$date==date) & (vacc_IT_fixed$vaccine=='Oxford/AstraZeneca'),]
-    )==0){
+  if (nrow(vacc_IT_fixed[(vacc_IT_fixed$date==date) & (vacc_IT_fixed$vaccine=='Oxford/AstraZeneca'),])==0){
     
-    tmp <- vacc_IT_fixed[(vacc_IT_fixed$date==date-1) & 
-                           (vacc_IT_fixed$vaccine=='Oxford/AstraZeneca'),]
+    tmp <- vacc_IT_fixed[(vacc_IT_fixed$date==date-1) & (vacc_IT_fixed$vaccine=='Oxford/AstraZeneca'),]
     tmp$date = tmp$date+1
     vacc_IT_fixed[nrow(vacc_IT_fixed)+1, ] <- tmp
 
@@ -476,7 +474,7 @@ colnames(tot_vacc_Italy) <- c('date', 'tot_vaccinations')
 
 
 gg <- ggplot(tot_vacc_Italy, aes(x = date, y = tot_vaccinations)) + 
-  geom_line(col='dodgerblue3', size=1) + 
+  geom_line(col='dodgerblue3', size=0.8) + 
   labs(title="Total number of vaccines in Italy", 
        x='Date',
        y='Number of vaccinations',
@@ -500,7 +498,7 @@ tot_vacc_Italy_perday <- data.frame(dates, tot_vacc_Italy_perday)
 colnames(tot_vacc_Italy_perday) <- c('date', 'tot_vaccinations')
 
 gg <- ggplot(tot_vacc_Italy_perday, aes(x = date, y = tot_vaccinations)) + 
-  geom_line(col='dodgerblue3', size=1) + 
+  geom_line(col='dodgerblue3', size=0.8) + 
   labs(title="Number of vaccines per day in Italy", 
        x='Date',
        y='Number of vaccinations',
@@ -553,7 +551,7 @@ tot_vacc_Germany_perday <- data.frame(dates, tot_vacc_Germany_perday)
 colnames(tot_vacc_Germany_perday) <- c('date', 'tot_vaccinations')
 
 G_perday <- ggplot(tot_vacc_Germany_perday, aes(x = date, y = tot_vaccinations)) + 
-  geom_line(col='dodgerblue3', size=1) + 
+  geom_line(col='dodgerblue3', size=0.8) + 
   labs(title="Number of vaccines per day in Germany", 
        x='Date',
        y='Number of vaccinations',
@@ -607,7 +605,7 @@ tot_vacc_USA_perday <- data.frame(dates, tot_vacc_USA_perday)
 colnames(tot_vacc_USA_perday) <- c('date', 'tot_vaccinations')
 
 USA_perday <- ggplot(tot_vacc_USA_perday, aes(x = date, y = tot_vaccinations)) + 
-  geom_line(col='dodgerblue3', size=1) + 
+  geom_line(col='dodgerblue3', size=0.8) + 
   labs(title="Number of vaccines per day in USA", 
        x='Date',
        y='Number of vaccinations',
@@ -707,7 +705,7 @@ tot_vacc_USA_perday <- data.frame(dates, tot_vacc_USA_perday)
 colnames(tot_vacc_USA_perday) <- c('date', 'tot_vaccinations')
 
 USA_perday <- ggplot(tot_vacc_USA_perday, aes(x = date, y = tot_vaccinations)) + 
-  geom_line(col='dodgerblue3', size=1) + 
+  geom_line(col='dodgerblue3', size=0.8) + 
   labs(title="Number of vaccines per day in USA", 
        x='Date',
        y='Number of vaccinations',
@@ -735,7 +733,6 @@ Data: <https://github.com/owid/covid-19-data/blob/master/public/data/vaccination
 # load the data
 urlfile = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations.csv"
 df_vacc <- read_csv(url(urlfile), col_names=TRUE)
-glimpse(df_vacc)
 
 # european countries
 df_vacc_europe = df_vacc[df_vacc$iso_code=='OWID_EUR', ]
@@ -744,11 +741,66 @@ df_vacc_europe = df_vacc[df_vacc$iso_code=='OWID_EUR', ]
 vacc_permillion = aggregate(df_vacc_europe$daily_vaccinations_per_million, list(df_vacc_europe$date), FUN=sum)
 colnames(vacc_permillion) <- c('date', 'vaccinations')
 
-gg <- ggplot(vacc_permillion, aes(x = date, y = vaccinations)) + 
-  geom_line(col='dodgerblue3', size=1) + 
+gg1 <- ggplot(vacc_permillion, aes(x = date, y = vaccinations)) + 
+  geom_line(col='dodgerblue3', size=0.8) + 
   labs(title="Number of daily vaccinations per millions in Europe", 
        x='Date',
        y='Number of vaccinations/day/million',
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+
+gg2 <- ggplot(vacc_permillion, aes(x = date, y = vaccinations)) + 
+  geom_col(fill='dodgerblue3', width=0.6) + 
+  labs(title="Number of daily vaccinations per millions in Europe", 
+       x='Date',
+       y='Number of vaccinations/day/million',
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+
+# plot(gg1)
+plot(gg2)
+
+```
+
+It can be noted that this plot presents the same general trend as the graphs relating to Italy and Germany. Let's plot over this graph the number of daily vaccinations per million of each European country. 
+
+```{r}
+
+# import iso-codes of Europian countries from csvfile
+
+EU_isocodes <- read_csv("../../data/eur_country_codes.csv", col_names=TRUE )
+
+df_vacc_eucountry <- df_vacc[df_vacc$iso_code %in% EU_isocodes$`Alpha-3`, ]
+unique(df_vacc_eucountry$location) %>% 
+  kable(col.names='European Countries in the vaccinations tibble') %>%
+  kable_styling()
+
+```
+
+```{r}
+
+# number of vaccinations per million per date
+
+vacc_permillion_alleu <- summarise(group_by(df_vacc_eucountry, date, iso_code), vacc_permill= sum(daily_vaccinations_per_million))
+head(vacc_permillion_alleu) %>%
+  kable() %>%
+  kable_styling()
+
+
+gg <- ggplot() +
+  geom_line(data=vacc_permillion_alleu, aes(x = date, y = vacc_permill, color=iso_code), size=0.4) +
+  scale_colour_grey(start=0, end=0.9)+
+  geom_line(data=vacc_permillion, aes(x = date, y = vaccinations), col='firebrick', size=1.4) +
+  labs(title="Number of daily vaccinations per millions in Europe",
+       x='Date',
+       y='Number of vaccinations/day/million',
+       color='ISO-CODE',
        caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
   scale_x_continuous(
     breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
@@ -759,11 +811,158 @@ plot(gg)
 
 ```
 
+
+
 ### 2. Study the data structure and produce few relevant plots of your taste
 
 ```{r}
+cat('Data structure:\n\n')
+glimpse(df_vacc)
 
 ```
+
+First of all I want to study for the European countries what is **today** the number of: 
+- people vaccinated per hundred
+- people fully vaccinated per hundred
+- total boosters per hundred
+
+
+```{r}
+
+last_date = tail(df_vacc_eucountry$date,1)
+df_today <- na.omit(df_vacc_eucountry[df_vacc_eucountry$date==last_date, ])
+
+plot_1 <- df_today %>%
+  mutate(location = fct_reorder(location, people_vaccinated_per_hundred)) %>%
+  ggplot(aes(location, people_vaccinated_per_hundred)) +
+  geom_col(fill='dodgerblue3', alpha=0.8) +
+  labs(title=paste('People vaccinated per hundred on', last_date),
+       x='Country',
+       y='Number of vaccinations',
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data")+
+  coord_flip() +
+  theme_bw()
+
+plot_2 <- df_today %>%
+  mutate(location = fct_reorder(location, people_fully_vaccinated_per_hundred)) %>%
+  ggplot(aes(location, people_fully_vaccinated_per_hundred)) +
+  geom_col(fill='dodgerblue3', alpha=0.8) +
+  labs(title=paste('People fully vaccinated per hundred on', last_date),
+       x='Country',
+       y='Number of vaccinations',
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data")+
+  coord_flip() +
+  theme_bw()
+
+plot_3 <- df_today %>%
+  mutate(location = fct_reorder(location, total_boosters_per_hundred)) %>%
+  ggplot(aes(location, total_boosters_per_hundred)) +
+  geom_col(fill='dodgerblue3', alpha=0.8) +
+  labs(title=paste('Total boosters per hundred on', last_date),
+       x='Country',
+       y='Number of vaccinations',
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data")+
+  coord_flip() +
+  theme_bw()
+
+plot(plot_1)
+plot(plot_2)
+plot(plot_3)
+
+
+```
+
+I want to try to superimpose the 3 plots. I don't think it's useful from a data visualization point of view, but I believe it is a great opportunity to test how to do this in R. 
+
+```{r}
+
+A <- df_today %>%
+  select(location, people_vaccinated_per_hundred) %>%
+  rename('n'='people_vaccinated_per_hundred')
+
+A['type'] = rep(c('People Vaccinated'), length(A$location))
+
+
+B <- df_today %>%
+  select(location, people_fully_vaccinated_per_hundred)  %>%
+  rename('n'='people_fully_vaccinated_per_hundred')
+
+B['type'] = rep(c('People Fully Vaccinated'), length(B$location))
+
+C <- df_today %>%
+  select(location, total_boosters_per_hundred)  %>%
+  rename('n'='total_boosters_per_hundred')
+
+C['type'] = rep(c('Total Boosters'), length(C$location))
+
+new <- rbind(A, B, C)
+
+ggplot(new) +
+  geom_col(aes(x=location, y=n, fill=type)) +
+  labs(title=paste("Number of vaccinations per European country per hundred on", last_date),
+      x='Country',
+      y='Number of vaccinations per hundred',
+      fill = NULL,
+      caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data")+
+  coord_flip()+
+  theme(legend.title=element_blank())+
+  theme_bw()
+
+```
+
+Now, I want to do again the same thing in a fancier way, using the library `highcharter`. 
+
+```{r}
+
+library(highcharter)
+options(highcharter.theme = hc_theme_google())
+
+new %>%
+  hchart(
+    'bar', hcaes(x='location', y='n', group='type'),
+    stacking='normal'
+    ) %>%
+  hc_title(text=paste('Number of vaccinations per European country per hundred on', last_date)) %>% 
+  hc_xAxis(title = list(text = 'Country')) %>%
+  hc_yAxis(title = list(text = 'Number of vaccinations per hundred'))
+
+
+
+```
+
+Finally, let's see how these 3 metrics change over time in different continents. To do this, I prefer to define a function, to avoid code replication.
+
+```{r, warning = FALSE}
+
+continents <- c("Europe", "Asia", "Africa", "North America", "South America")
+df_vacc_ <- df_vacc[df_vacc$location %in% continents, ]
+
+myplot <- function(y, title_metric){df_vacc_ %>%
+  ggplot() +
+  geom_line(aes(x=date, y=y, color = location), size=0.6) + 
+  scale_color_manual(values = colors)+ 
+  labs(title=paste(title_metric, 'per hundred vs time'), 
+       x='Date',
+       y='Number of vaccinations',
+       color='Vaccine', 
+       caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_x_continuous(
+    breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
+  ) +
+  theme_bw()
+}
+
+myplot(df_vacc_$people_vaccinated_per_hundred, 'People vaccinated')
+myplot(df_vacc_$people_fully_vaccinated_per_hundred, 'People fully vaccinated')
+myplot(df_vacc_$total_boosters_per_hundred, 'Total boosters')
+
+
+
+
+
+```
+
+From these graphs it is evident that there is a difference in the possibility of accessing vaccines in different geographical areas, especially in Africa.
 
 Data: <https://github.com/owid/covid-19-data/blob/master/public/data/vaccinations/vaccinations.csv>
 

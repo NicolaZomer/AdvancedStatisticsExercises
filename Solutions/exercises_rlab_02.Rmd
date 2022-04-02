@@ -11,13 +11,19 @@ knitr::opts_chunk$set(dev = "ragg_png")
 
 ```
 
+# Packages and functions
 
 ```{r}
 # tidyverse
-library(ggplot2)
+library(tidyverse)
 
 # others
+library(gridExtra)
 library(kableExtra)
+# library(latex2exp)
+# library(scales)
+# library(glue)
+# library(highcharter)
 
 ```
 
@@ -30,7 +36,12 @@ mykable <- function(data) {
     kable_styling()
 }
 
+# Colors
+colors <- c('darkred', 'deepskyblue', 'darkgreen', 'darkgoldenrod', 'darkblue')
+
 ```
+
+
 
 
 # Exercise 1
