@@ -7,13 +7,15 @@ output:
     default
 ---
 
+I need to use this setup to obtain nice graphics when I convert R markdown to HTML. 
+
 ```{r setup-chunk}
 knitr::opts_chunk$set(dev = "ragg_png")
 
 ```
 
 
-```{r, include=FALSE}
+```{r, message=FALSE}
 # tidyverse
 library(tidyverse)
 # library(ggplot2)
@@ -35,13 +37,18 @@ In the whole notebook I will use *kable* to show the tables, as it allows to kee
 # Exercise 1 - Vectors and data frames
 
 ```{r}
-df_lakes <- read.csv("../../data/lochs_of_Scotland.csv", header=TRUE, sep=",")
+
+filepath = "../../data/lochs_of_Scotland.csv"
+
+df_lakes <- read.csv(filepath, header=TRUE, sep=",")
 df_lakes %>%
   kbl() %>%
   kable_styling()
+
 ```
 
 ```{r}
+
 # Remove columns not containing volume or area and in [mi]
 df_lakes <- df_lakes[, c(1, 2, 4)]
 
@@ -56,6 +63,7 @@ df_lakes %>%
 ## 1. Evaluate the highest and lowest volume and area lake
 
 ```{r}
+
 # indices 
 idx_max_vol <- which.max(df_lakes$Volume)
 idx_min_vol <- which.min(df_lakes$Volume)
@@ -71,13 +79,15 @@ cat(
   'Lowest area lake:', df_lakes$Loch[idx_min_area], ', with area ', df_lakes$Area[idx_min_area], 'km^2'
   
   )
+
 ```
 
 ## 2. Order the frame with respect to the area and determine the two largest area lakes
 
-Ordered dataframe:
+Ordered data frame:
 
 ```{r}
+
 lakes_byarea <- df_lakes[order(df_lakes$Area, decreasing=TRUE), ]
 lakes_byarea %>%
   kbl() %>%
@@ -86,14 +96,16 @@ lakes_byarea %>%
 ```
 
 ```{r}
-largest_area_2 = lakes_byarea$Loch[1:2]
 
+largest_area_2 = lakes_byarea$Loch[1:2]
 glue('2 largest area lakes: {largest_area_2[1]} and {largest_area_2[2]}')
+
 ```
 
 ## 3. By summing up the areas occupied by the lakes, determine the area of Scotland covered by water
 
 ```{r}
+
 area_water <- sum(df_lakes$Area)
 glue('Area of Scotland covered by water: {area_water} km^2')
 
@@ -108,7 +120,10 @@ Reference and data: <https://en.wikipedia.org/wiki/List_of_lochs_of_Scotland>
 The last column of the data frame contains data on crude oil prices from 1861 to 2020, measured in US dollars per barrel.
 
 ```{r}
-df_oilprices <- read.csv("../../data/crude-oil-prices.csv", header=TRUE, sep=",")
+
+filepath="../../data/crude-oil-prices.csv"
+
+df_oilprices <- read.csv(filepath, header=TRUE, sep=",")
 colnames(df_oilprices) <- c(names(df_oilprices[1:3]), 'Price') 
 
 str(df_oilprices)
@@ -118,6 +133,7 @@ str(df_oilprices)
 ## 2. Produce a plot with the Oil price as a function of the year
 
 ```{r}
+
 gg <- ggplot(df_oilprices, aes(x=Year, y=Price))+
   geom_line(col='navyblue', size=0.8) +
   labs(title="Crude Oil Prices from 1861 to 2020 ($/barrel)", 
@@ -142,11 +158,13 @@ plot(gg)
 ## 3. Which is the highest price in history ? When did it occur ?
 
 ```{r}
+
 highest_price <- max(df_oilprices$Price)
 highest_price_year <- df_oilprices$Year[which.max(df_oilprices$Price)]
 
 glue('Highest price in hystory: {format(highest_price, digits=5)} $/barrel.\n
   It occured in {highest_price_year}.')
+
 ```
 
 ## 4. Plot the derivative of the curve, simply evaluated with the finite difference formula
@@ -156,6 +174,7 @@ $$
 $$
 
 ```{r}
+
 prices <- df_oilprices$Price
 years <- df_oilprices$Year
 derivatives <- prices[2:length(prices)]-prices[1:length(prices)-1]
@@ -168,6 +187,7 @@ str(df_derivatives)
 ```
 
 ```{r}
+
 gg <- ggplot(df_derivatives, aes(x=Year, y=Derivative))+
   geom_line(col='navyblue', size=0.8) + 
   labs(title="Annual Variation of Crude Oil Prices from 1861 to 2020 ($/barrel)", 
@@ -186,6 +206,7 @@ gg <- ggplot(df_derivatives, aes(x=Year, y=Derivative))+
   theme_bw()
 
 plot(gg)
+
 ```
 
 Reference and data: <https://ourworldindata.org/grapher/crude-oil-prices>
@@ -195,15 +216,19 @@ Reference and data: <https://ourworldindata.org/grapher/crude-oil-prices>
 ## 1. Write R code that is able to read the file and import it in a tibble structure
 
 ```{r}
-coal_prod <- read_csv("../../data/coal-production-by-country.csv", col_names=TRUE)
+
+filepath = "../../data/coal-production-by-country.csv"
+
+coal_prod <- read_csv(filepath, col_names=TRUE)
 colnames(coal_prod) <- c(names(coal_prod[1:3]), 'Production')
 
-kable(head(coal_prod)) %>%
-  kable_styling()
+glimpse(coal_prod)
+
 ```
 
 ```{r}
 is_tibble(coal_prod)
+
 ```
 
 ## 2. Count the number of countries available in the file and produce a barplot with the number of entries for each country
@@ -213,6 +238,13 @@ countries <- unique(coal_prod$Entity)
 cat('Number of countries:', length(countries))
 
 ```
+Notice that if we use `Code` instead of `Entity` we get a different result.
+
+```{r}
+cat("Number of countries using 'Code' instead of 'Entity':", length(unique(coal_prod$Code)))
+
+```
+This is due to the fact that some entities, such as continents, do not have a corresponding code and this results in a `NA` entry in the tibble. As I want to consider also the continents in the following analysis, I prefer to define the countries vector using the `Entity` attribute.
 
 ```{r, fig.height = 25, fig.width = 7}
 
@@ -236,6 +268,7 @@ For the following items select only the years $$\geq$$ 1970.
 ## 3. Selecting only the year after 1970, determine the total integrated production for each country and print the top 5 countries with highest coal productions
 
 ```{r}
+
 # select only the years after 1970
 coal_prod_1970 <- coal_prod[coal_prod['Year']>1970, ]
 
@@ -253,6 +286,7 @@ int_prod_1970[order(int_prod_1970$IntProd, decreasing = TRUE)[1:5], ] %>%
 As some elements are not countries, I want to remove these rows, and repeat the process until I get 5 countries.
 
 ```{r}
+
 removed_elements = c('World', 'Asia Pacific', 'Asia and Oceania', 'OECD',
                      'North America', 'Eurasia', 'Europe', 'EU-28', 'CIS', 'Africa',
                      'South Africa'
@@ -279,9 +313,11 @@ df_top5 <- coal_prod_1970[coal_prod_1970$Entity %in% top5_countries, ]
 
 # inspect the structure of the dataframe
 str(df_top5)
+
 ```
 
 ```{r}
+
 colors <- c('darkred', 'deepskyblue', 'darkgreen', 'darkgoldenrod', 'darkblue')
 
 ggplot(df_top5, aes(x = Year, y = Production)) + 
@@ -297,6 +333,7 @@ ggplot(df_top5, aes(x = Year, y = Production)) +
 ## 5. Generate a plot with the cumulative sum of the World's coal production over the years
 
 ```{r}
+
 world_cum <- cumsum(coal_prod_1970$Production[coal_prod_1970$Entity=='World'])
 years <- coal_prod_1970$Year[coal_prod_1970$Entity=='World']
 
@@ -307,8 +344,6 @@ ggplot() +
        y="Production", 
        caption = "Source: https://ourworldindata.org/grapher/coal-production-by-country") +
   theme_bw()
-
-  
 
 ```
 
@@ -327,6 +362,7 @@ urlfile = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/da
 vacc_bymanu <- read_csv(url(urlfile), col_names=TRUE)
 
 glimpse(vacc_bymanu)
+
 ```
 
 ```{r}
@@ -345,6 +381,7 @@ head(vacc_Italy) %>%
 
 # inspect the manufacturers
 unique(vacc_Italy$vaccine)
+
 ```
 
 ```{r}
@@ -366,6 +403,7 @@ gg <- ggplot(vacc_Italy, aes(x = date, y = total_vaccinations)) +
   theme_bw()
   
 plot(gg)
+
 ```
 
 ### 3. From the same tibble plot the total number of vaccines shot per day in Italy
@@ -416,6 +454,7 @@ kable(problematic_dates, col.names="Problematic Dates") %>%
 Let's see if we know the total Oxford/Astrazeneca vaccinations on these days.
 
 ```{r}
+
 for (i in seq_along(problematic_dates)){
   tmp <- vacc_Italy[(vacc_Italy$date==problematic_dates[i]) & (vacc_Italy$vaccine=='Oxford/AstraZeneca'), ]
   is_not_empty <- as.logical(nrow(tmp))
@@ -429,12 +468,12 @@ print(paste('Last information about Oxford/AstraZeneca vaccine in ',
             tail(vacc_Italy$date[vacc_Italy$vaccine=='Oxford/AstraZeneca'], 1)))
 ```
 
-As expected I have no information on Oxford/AstraZeneca vaccines on these dates and after Jan 22. This causes the graph of the total number of vaccinations to drop. Moreover, notice how the same problem arises even after this date, a sign that some data relating to other pharmaceutical companies is also missing.
+As expected I have no information on Oxford/AstraZeneca vaccines on these dates and after Jan 22. This causes the graph of the total number of vaccinations to drop. Moreover, notice how the same problem arises even after this date, a sign that some data relating to other pharmaceutical companies is also missing. However, I don't want to take these into consideration too. A possible solution would be to define a new dataframe of zeros, containing all the dates, and fill it with the information provided, expanding them in the missing days. 
 
-**This is what I will try to fix the problem:**
+**Instead, this is what I will try to fix the problem, considering only the missing data of AstraZeneca:**
 
 1.  **Break the plot in January 2022.** After this date in my opinion it has no meaning to show the total number of vaccinations. One possibility would be to extend the AstraZeneca plot, but this would mean assuming zero vaccinations of that type after January 2022. Since this is a strong assumption, I prefer to stop the study first, using only data that I believe to be reliable.
-2.  **Add the total number of vaccinations in the dates before January 2022 in which I have no information**. I set them to be equal to the value on the day before. Hopefully being single days this does not alter the results too much.
+2.  **Add the total number of vaccinations in the dates before January 2022 in which I have no information**. I set them to be equal to the value on the day before. Hopefully, being single days, this does not alter the results too much.
 
 ```{r}
 
@@ -460,8 +499,6 @@ for (i in seq_along(problematic_dates)[1:11]){
  is_not_empty <- as.logical(nrow(tmp))
  print(paste(problematic_dates[i], ': is it NOT empty?', is_not_empty))
 }
-
-
 
 ```
 
@@ -491,6 +528,7 @@ plot(gg)
 It seems OK. Now I can evaluate the number of vaccinations per day.
 
 ```{r}
+
 tot_vacc_Italy_perday <- diff(tot_vacc_Italy$tot_vaccinations)
 dates <- tot_vacc_Italy$date[2:length(tot_vacc_Italy$date)]
 
@@ -516,7 +554,7 @@ plot(gg)
 
 #### Germany
 
-```{r}
+```{r, message=FALSE}
 
 # select only data related to Germany
 vacc_Germany <- vacc_bymanu[vacc_bymanu$location=='Germany',]
@@ -533,6 +571,7 @@ G_num <- ggplot(vacc_Germany, aes(x = date, y = total_vaccinations)) +
        y='Number of vaccinations',
        color='Vaccine', 
        caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_y_continuous(trans='log10') +
   scale_x_continuous(
     breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
   ) +
@@ -566,6 +605,7 @@ G_perday <- ggplot(tot_vacc_Germany_perday, aes(x = date, y = tot_vaccinations))
 # plot the results
 plot(G_num)
 plot(G_perday)
+
 ```
 
 #### United States of America
@@ -587,6 +627,7 @@ USA_num <- ggplot(vacc_USA, aes(x = date, y = total_vaccinations)) +
        y='Number of vaccinations',
        color='Vaccine', 
        caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_y_continuous(trans='log10') +
   scale_x_continuous(
     breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
   ) +
@@ -656,6 +697,7 @@ while (first_found == FALSE && last_found == FALSE && date<tail(df_JJ$date, 1)){
   date = date + 1
 }
 
+# show results
 if (first_date == '2022-03-01') {
   print('Strange, there is no problem')
 } else if (last_date == '2022-03-01') {
@@ -689,6 +731,7 @@ USA_num <- ggplot(vacc_USA, aes(x = date, y = total_vaccinations)) +
        y='Number of vaccinations',
        color='Vaccine', 
        caption = "Source: https://github.com/owid/covid-19-data/tree/master/public/data") +
+  scale_y_continuous(trans='log10') +
   scale_x_continuous(
     breaks = seq(as.Date("2021-01-01"), as.Date("2022-04-01"), by = "quarter"),
   ) +
@@ -777,20 +820,21 @@ It can be noted that this plot presents the same general trend as the graphs rel
 EU_isocodes <- read_csv("../../data/eur_country_codes.csv", col_names=TRUE )
 
 df_vacc_eucountry <- df_vacc[df_vacc$iso_code %in% EU_isocodes$`Alpha-3`, ]
-unique(df_vacc_eucountry$location) %>% 
+
+unique(df_vacc_eucountry$location) %>%
   kable(col.names='European Countries in the vaccinations tibble') %>%
   kable_styling()
 
 ```
 
-```{r}
+```{r, message=FALSE}
 
 # number of vaccinations per million per date
 
 vacc_permillion_alleu <- summarise(group_by(df_vacc_eucountry, date, iso_code), vacc_permill= sum(daily_vaccinations_per_million))
-head(vacc_permillion_alleu) %>%
-  kable() %>%
-  kable_styling()
+# head(vacc_permillion_alleu) %>%
+#   kable() %>%
+#   kable_styling()
 
 
 gg <- ggplot() +
@@ -899,7 +943,7 @@ new <- rbind(A, B, C)
 
 ggplot(new) +
   geom_col(aes(x=location, y=n, fill=type)) +
-  labs(title=paste("Number of vaccinations per European country per hundred on", last_date),
+  labs(title=paste("Number of vaccinations per hundred on", last_date),
       x='Country',
       y='Number of vaccinations per hundred',
       fill = NULL,
@@ -910,9 +954,9 @@ ggplot(new) +
 
 ```
 
-Now, I want to do again the same thing in a fancier way, using the library `highcharter`. 
+Now, I want to do again the same thing in a fancier way, using the library `highcharter`. This library could be very useful in the future.  
 
-```{r}
+```{r, message=FALSE}
 
 library(highcharter)
 options(highcharter.theme = hc_theme_google())
@@ -925,8 +969,6 @@ new %>%
   hc_title(text=paste('Number of vaccinations per European country per hundred on', last_date)) %>% 
   hc_xAxis(title = list(text = 'Country')) %>%
   hc_yAxis(title = list(text = 'Number of vaccinations per hundred'))
-
-
 
 ```
 
@@ -956,14 +998,9 @@ myplot(df_vacc_$people_vaccinated_per_hundred, 'People vaccinated')
 myplot(df_vacc_$people_fully_vaccinated_per_hundred, 'People fully vaccinated')
 myplot(df_vacc_$total_boosters_per_hundred, 'Total boosters')
 
-
-
-
-
 ```
 
 From these graphs it is evident that there is a difference in the possibility of accessing vaccines in different geographical areas, especially in Africa.
 
 Data: <https://github.com/owid/covid-19-data/blob/master/public/data/vaccinations/vaccinations.csv>
 
-## 
