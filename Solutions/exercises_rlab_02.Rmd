@@ -244,11 +244,131 @@ c(t-1)(2-t) & 1<t<2\\
 $$
 where $t$ is the time in hours.
 
-### a) Using the `integrate()` R function, determine the constant $c$ (and verify it analytically)
+### a) Using the integrate() R function, determine the constant $c$ (and verify it analytically)
+To find $c$, one must impose that the distribution $f(t)$ is normalized. 
+Analytically:
+$$
+1 = \int_{-\infty}^{\infty}f(t)dt = \int_{1}^{2}c(t-1)(2-t)dt = c\left[-\frac{t^3}{3}+3\frac{t^2}{2}-2t\right]\Biggr\rvert_1^2 = \frac{c}{6} \qquad \Longrightarrow \qquad c=6
+$$ 
+
+```{r}
+mypdf <- 
+
+integral_c1 <- integrate(
+  function(t){
+    ifelse((t>1 & t<2), (t-1)*(2-t), 0)
+    }, 
+  lower=1, upper=2
+)
+
+cat('The constant c that guarantees the normalization is:', 1/integral_c1$value)
+
+
+```
+
 
 ### b) Write the set of four R functions and plot the pdf and cdf, respectively
 
+
+```{r}
+
+# PDF
+d_custom <- function(t, c=6){
+    ifelse((t>1 & t<2), c*(t-1)*(2-t), 0)
+}
+
+# CDF
+p_custom <- function(t){
+  integrals = numeric(length(t))
+  for (i in seq_along(t)){
+    integrals[i] <- integrate(d_custom, lower=-Inf, upper = t[i], rel.tol = 1e-12)$value
+  }
+  return(integrals)
+  }
+
+# General inverse functions;
+# bounds set such that it searches for a solution in [1, 2], the only interval in which the cdf is invertible
+inverse <- function(f, lower=1, upper=2){
+  function(y){
+    uniroot(function(x){f(x) - y}, lower = lower, upper = upper)$root
+  }
+}
+
+# Quantile function
+q_custom <- function(y){
+  output <- numeric(length(y))
+  for (i in seq_along(y)){
+    if (y[i]==1) output[i]<-2       # boundary value
+    else if (y[i]==0) output[i]<-1  # boundary value
+    else output[i] <- inverse(p_custom)(y[i])
+  }
+  return(output)
+}
+
+# Generate random numbers from the distribution
+r_custom <- function(n, seed=1){
+  set.seed(seed)
+  q_custom(runif(n))
+}
+
+```
+
+Plot of the pdf and the cdf
+
+```{r}
+
+
+time <- seq(0.9,2.1, by=0.05)
+
+plot_pdf <- ggplot()+
+  geom_col(aes(x=factor(time), y=d_custom(time)),  fill='gold', colour="black") +
+  labs(title="Probability density function", 
+       x='Time',
+       y='f(x)')+
+  scale_x_discrete(breaks=seq(0.9, 2.1, by=0.1))+
+  theme_bw()
+
+plot_cdf <- ggplot()+
+  geom_col(aes(x=factor(time), y=p_custom(time)),  fill='gold', colour="black") +
+  labs(title="Cumulative density function", 
+       x='Time',
+       y='F(x)')+
+  scale_x_discrete(breaks=seq(0.9, 2.1, by=0.1))+
+  theme_bw()
+
+plot(plot_pdf)
+plot(plot_cdf)
+
+
+```
+
+Test `r_custom`: sampling from a user's defined pdf.
+
+```{r, message=FALSE}
+
+ggplot() + 
+  geom_histogram(aes(x=r_custom(10000), y=..density..),  binwidth = 0.05, center = 0.05, fill='gold', colour="black") +
+  labs(title="Sampling results from the defined pdf", 
+       x='Time',
+       y='Count')+
+  scale_x_continuous(breaks=seq(0.9, 2.1, by=0.1), limits=c(0.9, 2.1)) +
+  theme_bw()+
+  theme(panel.grid.minor.x = element_blank())
+
+```
+
+
 ### c) Evaluate the probability that the student will finish the aptitude test in more than 75 minutes. And that it will take 90 and 120 minutes.
+```{r}
+
+time_1 <- 75./60
+time_2 <- 90./60
+time_3 <- 120./60
+
+cat('Probability that the student will finish the test in more than 75 minutes:', 1-p_custom(time_1), '%')
+
+```
+The probability that it will take **exactly** 90 and 120 minutes is zero, because the distribution is continuous and $P[X=a]=0 \; \forall a$ in a continuous distribution. 
 
 
 
