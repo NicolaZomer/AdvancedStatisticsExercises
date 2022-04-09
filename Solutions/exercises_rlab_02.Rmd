@@ -8,19 +8,20 @@ output:
 
 ```{r setup-chunk}
 knitr::opts_chunk$set(dev = "ragg_png")
+options(digits=5) # set number of digits equal to 5
 
 ```
 
 # Packages and functions
 
-```{r}
+```{r, message=FALSE}
+
 # tidyverse
 library(tidyverse)
 
 # others
 library(gridExtra)
 library(kableExtra)
-# library(latex2exp)
 # library(scales)
 # library(glue)
 # library(highcharter)
@@ -41,10 +42,8 @@ colors <- c('darkred', 'deepskyblue', 'darkgreen', 'darkgoldenrod', 'darkblue')
 
 ```
 
-
-
-
 # Exercise 1
+
 ```{r}
 
 x <- c(15.58, 15.9, 16, 16.1, 16.2)
@@ -58,27 +57,29 @@ var_1 <- sum(p1*(x-exp_value_1)**2)
 var_2 <- sum(p2*(x-exp_value_2)**2)
 
 cat(
-  'E[X] method 1:', round(exp_value_1, 3), 
-  '\nE[X] method 2:', round(exp_value_2, 3), 
-  '\nVar(X) method 1:', round(var_1, 6), 
-  '\nVar(X) method 2:', round(var_2, 6)
+  'E[X] method 1:', exp_value_1, 
+  '\nE[X] method 2:', exp_value_2, 
+  '\nVar(X) method 1:', var_1,
+  '\nVar(X) method 2:', var_2
   )
 
 
 ```
 
 # Exercise 2
+
 The waiting time, in minutes, at the doctor's is about 30 minutes, and the distribution follows an exponential pdf with rate 1/30.
 
-## A) Simulate the waiting time for 50 people at the doctor's office and plot the relative histogram
+### A) Simulate the waiting time for 50 people at the doctor's office and plot the relative histogram
 
 ```{r}
 
 set.seed(1) 
-people_wt <- rexp(50, 1/30)
+lambda = 1/30
+people_wt <- rexp(50, lambda)
 
 ggplot() + 
-  geom_histogram(aes(people_wt),  bins = 10, fill='dodgerblue3', colour="black") +
+  geom_histogram(aes(people_wt),  bins = 10, fill='gold', colour="black") +
   labs(title="Simulation of the waiting time for 50 people", 
        x='People Waiting Time',
        y='Count')+
@@ -89,35 +90,187 @@ ggplot() +
 
 ```
 
-## B) What is the probability that a person will wait for less than 10 minutes?
+### B) What is the probability that a person will wait for less than 10 minutes?
+
+This is given by the cumulative distribution, evaluated at $t=10$.
 
 ```{r}
+cat('Probability that a person will wait for less than 10 minutes:', pexp(10, lambda), '%')
 
 ```
 
+### C) Evaluate the average waiting time from the simulated data and compare it with the expected value
 
-## C) Evaluate the average waiting time from the simulated data and compare it with the expected value 
-Calculate the expected value from theory and by manipulating the probability distributions using R.
+From the theory, the expected value of the exponential distribution is 
+$$
+E[x] = \frac{1}{\lambda}=30
+$$
 
-```{r}
-
-```
-
-
-## D) What is the probability for waiting more than one hour before being received?
+It is possible to compute it using the definition.
 
 ```{r}
 
+ex <- integrate(function(x){x*dexp(x, lambda)}, lower = -Inf, upper = Inf)$value
+cat('Average waiting time by integration:', ex)
+cat('\nError:', abs(ex-30)/30)
+
 ```
 
+Let's evaluate it from the simulated data.
 
+```{r}
+
+ex <- mean(people_wt)
+cat('Simulated average waiting time:', ex, 'minutes')
+cat('\nError:', formatC(abs(ex-30)/30, format = "e"))
+
+```
+
+### D) What is the probability for waiting more than one hour before being received?
+
+It is $1-P[T\leq1h]=1-P[T\leq60min]$.
+
+```{r}
+cat('Probability for waiting more than one hour:', 1-pexp(60, lambda), '%')
+
+```
 
 # Exercise 3
 
+### Task
+Let's suppose that on a book, on average, there is one typo error every three pages. If the number of errors follows a Poisson distribution, plot the pdf and cdf, and calculate the probability that there is at least one error on a specific page of the book.
+
+### Solution
+
+I assume $\lambda=1/3$, as the expected value of the Poisson distribution is equal to $\lambda$.
+
+```{r}
+
+set.seed(1)
+
+x=0:10
+nerrors <- data.frame(X=factor(x, levels = x), pdf=dpois(x, 1/3), cdf=ppois(x, 1/3))
+
+# Plot
+pdf <- ggplot() + 
+  geom_col(data=nerrors, aes(X, pdf), fill='gold', colour="black") +
+  labs(title="Pdf of the number of errors", 
+       y='f(x)') +
+  ylim(0,1)+
+  theme_bw() +
+  theme(axis.title.x = element_blank())
+
+cdf <- ggplot() + 
+  geom_col(data=nerrors, aes(X, cdf), fill='gold', colour="black") +
+  labs(title="Cdf of the number of errors", 
+       y='f(x)') +
+  theme_bw() +
+  theme(axis.title.x = element_blank())
+
+plot(pdf)
+plot(cdf)
+        
+```
+
+The probability that there is at least one error on a specific page of the book is $1-P[n=0]$, where $n$ is the number of errors.
+
+```{r}
+cat('Probability that there is at least one error on a specific page of the book:', 1-dpois(0, 1/3), '%')
+
+```
+
 # Exercise 4
 
+### Task
+We randomly draw cards from a deck of 52 cards, with replacement, until one ace is drawn. Calculate the probability that at least 10 draws are needed.
+
+### Solution
+The probability of drawing 1 ace from a deck of 52 card is 
+$$
+p=\frac{4}{52}=\frac{1}{13}
+$$
+
+The probability that at least 10 trials are needed until one ace is drawn can be easily achieved using the Binomial distribution. Indeed, it is equal to the probability of having 0 successes in the first 9 trials. 
+
+```{r}
+
+p=1/13
+
+prob_10_a <- dbinom(0, 9, p) 
+cat('Probability that at least 10 draws are needed until one ace is drawn:', prob_10_a, '%')
+
+```
+
+The same result can be achieved in a more complex way using the Negative Binomial distribution.
+
+The probability that exactly $d$ trials are needed before the first success is given by the Pascal (or Negative Binomial) distribution: 
+$$
+P[D=d] = Bneg(r=1|d, p) = p(1-p)^d
+$$ 
+So the probability that **at least** 10 draws are needed is 
+$$
+P[D\geq10] = 1-P[D<10] = 1-\sum_{i=1}^{9}P[D=i] = 1-\sum_{i=1}^{9} Bn(r=1|i, p)
+$$ 
+In R, we can use the function `dnbinom(x, size, prob)`, that represents the number of failures which occur in a sequence of Bernoulli trials before a target number of successes is reached.
+
+- ’x’ = number of failures before the target number of successes is reached
+- ’size’ = number of successes 
+- ’prob’ = p
+
+Using this function, the probability that at least 10 draws are needed can be computed as
+$$
+P[D\geq10] = 1-P[D<10] = 1-\sum_{i=0}^{8} \text{dnbinom}(i, 1, p)
+$$
+
+```{r}
+
+n_failures <- 0:8
+prob_10_b <- 1-sum(dnbinom(n_failures, 1, p))
+
+cat('Probability that at least 10 draws are needed until one ace is drawn:', prob_10_b, '%')
+
+```
+
 # Exercise 5
+The time it takes a student to complete a TOLC-I University orientation and evaluation test follows a density function of the form
+$$
+\begin{equation}
+f(t) =
+\begin{cases}
+c(t-1)(2-t) & 1<t<2\\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+$$
+where $t$ is the time in hours.
+
+### a) Using the `integrate()` R function, determine the constant $c$ (and verify it analytically)
+
+### b) Write the set of four R functions and plot the pdf and cdf, respectively
+
+### c) Evaluate the probability that the student will finish the aptitude test in more than 75 minutes. And that it will take 90 and 120 minutes.
+
+
 
 # Exercise 6
+The lifetime of tires sold by an used tires shop is $10^4\cdot x$ km, where $x$ is a random variable following the distribution function
+$$
+\begin{equation}
+f(t) =
+\begin{cases}
+2/x^2 & 1<t<2\\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+$$
+
+### a) Write the set of four R functions and plot the pdf and cdf, respectively
+### b) Determine the probability that tires will last less than 15000 km
+### c) Sample 3000 random variables from the distribution and determine the mean value and the variance, using the expression $Var(X) = E[X^2]-E[X]^2$
+
+
+
+
+
 
 
