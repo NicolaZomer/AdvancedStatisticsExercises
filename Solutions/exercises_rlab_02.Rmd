@@ -22,8 +22,8 @@ library(tidyverse)
 # others
 library(gridExtra)
 library(kableExtra)
+library(glue)
 # library(scales)
-# library(glue)
 # library(highcharter)
 
 ```
@@ -273,15 +273,15 @@ cat('The constant c that guarantees the normalization is:', 1/integral_c1$value)
 ```{r}
 
 # PDF
-d_custom <- function(t, c=6){
+d_custom_1 <- function(t, c=6){
     ifelse((t>1 & t<2), c*(t-1)*(2-t), 0)
 }
 
 # CDF
-p_custom <- function(t){
+p_custom_1 <- function(t){
   integrals = numeric(length(t))
   for (i in seq_along(t)){
-    integrals[i] <- integrate(d_custom, lower=-Inf, upper = t[i], rel.tol = 1e-12)$value
+    integrals[i] <- integrate(d_custom_1, lower=-Inf, upper = t[i], rel.tol = 1e-12)$value
   }
   return(integrals)
   }
@@ -295,20 +295,20 @@ inverse <- function(f, lower=1, upper=2){
 }
 
 # Quantile function
-q_custom <- function(y){
+q_custom_1 <- function(y){
   output <- numeric(length(y))
   for (i in seq_along(y)){
     if (y[i]==1) output[i]<-2       # boundary value
     else if (y[i]==0) output[i]<-1  # boundary value
-    else output[i] <- inverse(p_custom)(y[i])
+    else output[i] <- inverse(p_custom_1)(y[i])
   }
   return(output)
 }
 
 # Generate random numbers from the distribution
-r_custom <- function(n, seed=1){
+r_custom_1 <- function(n, seed=1){
   set.seed(seed)
-  q_custom(runif(n))
+  q_custom_1(runif(n))
 }
 
 ```
@@ -320,40 +320,43 @@ Plot of the pdf and the cdf
 
 time <- seq(0.9,2.1, by=0.05)
 
-plot_pdf <- ggplot()+
-  geom_col(aes(x=factor(time), y=d_custom(time)),  fill='gold', colour="black") +
-  labs(title="Probability density function", 
-       x='Time',
-       y='f(x)')+
+gg_distribution <- function(Y, Title='', xlabel='x', ylabel='y'){
+  ggplot()+
+  geom_col(aes(x=factor(time), y=Y),  fill='gold', colour="black") +
+  labs(title=Title, 
+       x=xlabel,
+       y=ylabel)+
   scale_x_discrete(breaks=seq(0.9, 2.1, by=0.1))+
   theme_bw()
+}
 
-plot_cdf <- ggplot()+
-  geom_col(aes(x=factor(time), y=p_custom(time)),  fill='gold', colour="black") +
-  labs(title="Cumulative density function", 
-       x='Time',
-       y='F(x)')+
-  scale_x_discrete(breaks=seq(0.9, 2.1, by=0.1))+
-  theme_bw()
-
-plot(plot_pdf)
-plot(plot_cdf)
+gg_distribution(d_custom_1(time), "Probability density function", "Time", "f(x)")
+gg_distribution(p_custom_1(time), "Cumulative density function", "Time", "F(x)")
 
 
 ```
 
 Test `r_custom`: sampling from a user's defined pdf.
 
-```{r, message=FALSE}
+```{r, warning=FALSE}
 
-ggplot() + 
-  geom_histogram(aes(x=r_custom(10000), y=..density..),  binwidth = 0.05, center = 0.05, fill='gold', colour="black") +
-  labs(title="Sampling results from the defined pdf", 
-       x='Time',
-       y='Count')+
-  scale_x_continuous(breaks=seq(0.9, 2.1, by=0.1), limits=c(0.9, 2.1)) +
-  theme_bw()+
-  theme(panel.grid.minor.x = element_blank())
+gg_sampling <- function(distribution, nsamples, returnvalues = FALSE, Title='Sampling results from the defined pdf', xlabel='x', ylabel='Count (normalized)'){
+  sampled = distribution(nsamples)
+  gg <- ggplot() + 
+    geom_histogram(aes(x=sampled, y=..density..),  binwidth = 0.05, center = 0.05, fill='gold', colour="black") +
+    labs(title=Title, 
+        x=xlabel,
+        y=ylabel)+
+    scale_x_continuous(breaks=seq(0.9, 2.1, by=0.1), limits=c(0.9, 2.1)) +
+    theme_bw()+
+    theme(panel.grid.minor.x = element_blank()) 
+  
+  plot(gg)
+  if (returnvalues) return(sampled)
+}
+
+gg_sampling(r_custom_1, 10000, xlabel='Time')
+
 
 ```
 
@@ -365,7 +368,7 @@ time_1 <- 75./60
 time_2 <- 90./60
 time_3 <- 120./60
 
-cat('Probability that the student will finish the test in more than 75 minutes:', 1-p_custom(time_1), '%')
+cat('Probability that the student will finish the test in more than 75 minutes:', 1-p_custom_1(time_1), '%')
 
 ```
 The probability that it will take **exactly** 90 and 120 minutes is zero, because the distribution is continuous and $P[X=a]=0 \; \forall a$ in a continuous distribution. 
@@ -378,15 +381,87 @@ $$
 \begin{equation}
 f(t) =
 \begin{cases}
-2/x^2 & 1<t<2\\
+2/x^2 & 1<x<2\\
 0 & \text{otherwise}
 \end{cases}
 \end{equation}
 $$
 
 ### a) Write the set of four R functions and plot the pdf and cdf, respectively
+
+```{r}
+
+# PDF
+d_custom_2 <- function(x){
+    ifelse((x>1 & x<2), 2/x^2, 0)
+}
+
+# CDF
+p_custom_2 <- function(x){
+  integrals = numeric(length(x))
+  for (i in seq_along(x)){
+    integrals[i] <- integrate(d_custom_2, lower=-Inf, upper = x[i], rel.tol=1e-7)$value
+  }
+  return(integrals)
+  }
+
+# Quantile function
+q_custom_2 <- function(y){
+  output <- numeric(length(y))
+  for (i in seq_along(y)){
+    if (y[i]==1) output[i]<-2       # boundary value
+    else if (y[i]==0) output[i]<-1  # boundary value
+    else output[i] <- inverse(p_custom_2)(y[i])
+  }
+  return(output)
+}
+
+# Generate random numbers from the distribution
+r_custom_2 <- function(n, seed=1){
+  set.seed(seed)
+  q_custom_2(runif(n))
+}
+
+gg_distribution(d_custom_2(time), "Probability density function", "x", "f(x)")
+gg_distribution(p_custom_2(time), "Cumulative density function", "x", "F(x)")
+
+```
+
+
+
 ### b) Determine the probability that tires will last less than 15000 km
+```{r}
+lifetime = 15000
+x_test = lifetime/10^4
+cat('The probability that tires will last less than 15000 km is', p_custom_2(x_test), '%')
+
+```
+
 ### c) Sample 3000 random variables from the distribution and determine the mean value and the variance, using the expression $Var(X) = E[X^2]-E[X]^2$
+
+```{r, warning=FALSE}
+
+# sample and plot at the same time using the function defined above
+r_samples <- gg_sampling(r_custom_2, 3000, returnvalues = TRUE, xlabel='x')
+
+```
+```{r}
+
+# mean value and variance
+exp_x <- mean(r_samples)
+exp_x2 <- mean(r_samples^2)
+var <- exp_x2-exp_x^2
+
+cat('Mean value of x:', exp_x)
+cat('\nVariance of x:', var)
+
+```
+```{r}
+glue('The average lifetime of the tires is {format(exp_x*10^4, digits=5)} km +- {format(sqrt(var)*10^4, digits=5)} km.')
+
+```
+
+
 
 
 
