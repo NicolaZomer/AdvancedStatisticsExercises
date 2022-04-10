@@ -269,6 +269,37 @@ cat('The constant c that guarantees the normalization is:', 1/integral_c1$value)
 
 ### b) Write the set of four R functions and plot the pdf and cdf, respectively
 
+```{r}
+
+# Generic CDF
+gen_cdf <- function(t, pdf, reltol = 1e-12){
+  integrals = numeric(length(t))
+  for (i in seq_along(t)){
+    integrals[i] <- integrate(pdf, lower=-Inf, upper = t[i], rel.tol = reltol)$value
+  }
+  return(integrals)
+}
+
+# Generic inverse functions;
+# bounds set such that it searches for a solution in [1, 2], the only interval in which the cdf is invertible
+inverse <- function(f, lower=1, upper=2){
+  function(y){
+    uniroot(function(x){f(x) - y}, lower = lower, upper = upper)$root
+  }
+}
+
+# Generic quantile function
+gen_quantile <- function(y, cdf, lower.value=1, upper.value=2){
+  output <- numeric(length(y))
+  for (i in seq_along(y)){
+    if (y[i]==1) output[i]<-upper.value       # boundary value
+    else if (y[i]==0) output[i]<-lower.value  # boundary value
+    else output[i] <- inverse(cdf)(y[i])
+  }
+  return(output)
+}
+
+```
 
 ```{r}
 
@@ -278,32 +309,10 @@ d_custom_1 <- function(t, c=6){
 }
 
 # CDF
-p_custom_1 <- function(t){
-  integrals = numeric(length(t))
-  for (i in seq_along(t)){
-    integrals[i] <- integrate(d_custom_1, lower=-Inf, upper = t[i], rel.tol = 1e-12)$value
-  }
-  return(integrals)
-  }
-
-# General inverse functions;
-# bounds set such that it searches for a solution in [1, 2], the only interval in which the cdf is invertible
-inverse <- function(f, lower=1, upper=2){
-  function(y){
-    uniroot(function(x){f(x) - y}, lower = lower, upper = upper)$root
-  }
-}
+p_custom_1 <- function(t){gen_cdf(t, d_custom_1)}
 
 # Quantile function
-q_custom_1 <- function(y){
-  output <- numeric(length(y))
-  for (i in seq_along(y)){
-    if (y[i]==1) output[i]<-2       # boundary value
-    else if (y[i]==0) output[i]<-1  # boundary value
-    else output[i] <- inverse(p_custom_1)(y[i])
-  }
-  return(output)
-}
+q_custom_1 <- function(y){gen_quantile(y, p_custom_1)}
 
 # Generate random numbers from the distribution
 r_custom_1 <- function(n, seed=1){
@@ -397,24 +406,10 @@ d_custom_2 <- function(x){
 }
 
 # CDF
-p_custom_2 <- function(x){
-  integrals = numeric(length(x))
-  for (i in seq_along(x)){
-    integrals[i] <- integrate(d_custom_2, lower=-Inf, upper = x[i], rel.tol=1e-7)$value
-  }
-  return(integrals)
-  }
+p_custom_2 <- function(x){gen_cdf(x, d_custom_2, reltol=1e-7)}
 
 # Quantile function
-q_custom_2 <- function(y){
-  output <- numeric(length(y))
-  for (i in seq_along(y)){
-    if (y[i]==1) output[i]<-2       # boundary value
-    else if (y[i]==0) output[i]<-1  # boundary value
-    else output[i] <- inverse(p_custom_2)(y[i])
-  }
-  return(output)
-}
+q_custom_2 <- function(y){gen_quantile(y, p_custom_2)}
 
 # Generate random numbers from the distribution
 r_custom_2 <- function(n, seed=1){
