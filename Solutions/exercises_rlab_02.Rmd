@@ -256,12 +256,22 @@ $$
 
 ```{r}
 
-n_failures <- 0:8
-prob_10_b <- 1-sum(dnbinom(n_failures, 1, p))
+prob_10_b <- 1-pnbinom(8, 1, p)
 
 cat('Probability that at least 10 draws are needed until one ace is drawn:', prob_10_b*100, '%')
 
 ```
+
+Another possible way to solve this exercise is to use the geometric distribution, as the probability we are looking for is the probability of having the first success after 10 or more trials. 
+
+```{r}
+
+prob_10_c <- 1-pgeom(8, p)
+
+cat('Probability that at least 10 draws are needed until one ace is drawn:', prob_10_c*100, '%')
+
+```
+
 
 # Exercise 5
 The time it takes a student to complete a TOLC-I University orientation and evaluation test follows a density function of the form
@@ -380,6 +390,7 @@ gg_distribution(p_custom_1(time), "Cumulative density function", "Time (hours)",
 
 
 ```
+I repeat the plot of the pdf and the cdf using the `highcharter' package. 
 
 ```{r}
 distributions_1 <- data.frame(X=factor(time, levels = time), pdf=d_custom_1(time), cdf=p_custom_1(time))
@@ -412,10 +423,11 @@ Test `r_custom`: sampling from a user's defined pdf.
 
 ```{r, warning=FALSE}
 
-gg_sampling <- function(distribution, nsamples, returnvalues = FALSE, Title='Sampling results from the defined pdf', xlabel='x', ylabel='Count (normalized)'){
-  sampled = distribution(nsamples)
+gg_sampling <- function(r_distribution, dp_distribution, nsamples, returnvalues = FALSE, Title='Sampling results from the defined pdf', xlabel='x', ylabel='Count (normalized)'){
+  sampled = r_distribution(nsamples)
   gg <- ggplot() + 
     geom_histogram(aes(x=sampled, y=..density..),  binwidth = 0.05, center = 0.05, fill='gold', colour="black") +
+    stat_function(fun=dp_distribution, color='firebrick') +
     labs(title=Title, 
         x=xlabel,
         y=ylabel)+
@@ -427,8 +439,7 @@ gg_sampling <- function(distribution, nsamples, returnvalues = FALSE, Title='Sam
   if (returnvalues) return(sampled)
 }
 
-gg_sampling(r_custom_1, 10000, xlabel='Time')
-
+gg_sampling(r_custom_1, d_custom_1, 3000, xlabel='Time')
 
 ```
 
@@ -486,6 +497,9 @@ gg_distribution(d_custom_2(time), "Probability density function", "x", "f(x)")
 gg_distribution(p_custom_2(time), "Cumulative density function", "x", "F(x)")
 
 ```
+
+I repeat the plot of the pdf and the cdf using the `highcharter' package. 
+
 ```{r}
 distributions_2 <- data.frame(X=factor(time, levels = time), pdf=d_custom_2(time), cdf=p_custom_2(time))
 
@@ -527,7 +541,7 @@ cat('The probability that tires will last less than 15000 km is', p_custom_2(x_t
 ```{r, warning=FALSE}
 
 # sample and plot at the same time using the function defined above
-r_samples <- gg_sampling(r_custom_2, 3000, returnvalues = TRUE, xlabel='x')
+r_samples <- gg_sampling(r_custom_2, d_custom_2, 3000, returnvalues = TRUE, xlabel='x')
 
 ```
 ```{r}
