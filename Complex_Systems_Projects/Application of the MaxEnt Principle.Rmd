@@ -174,7 +174,7 @@ if (lambdas$convergence != 0) {
 ```
 
 ## Results
-As expected, we found that $\lambda_1$ is close to $\mu=0.1$, while $\lambda_2$ and $\lambda_3$ are much smaller than $\lambda_1$ and almost zero. The resulting distribution is thus very close to that from which data were generated, and the constraints on $\langle  x^2 \rangle$ and  $\langle  x^3 \rangle$ doesn't provide any further information on the distribution.  
+As expected, we found that $\lambda_1$ is close to $\mu=0.1$, while $\lambda_2$ and $\lambda_3$ are much smaller than $\lambda_1$ and almost zero. The resulting distribution is thus very close to that from which data were generated, and the constraints on $\langle  x^2 \rangle$ and  $\langle  x^3 \rangle$ do not provide any further information on the distribution. Indeed, in this specific case, by using only the value of $\langle  x \rangle$ we would have found a very similar result, even closer to the original distribution.  
 
 ## Conclusions
 

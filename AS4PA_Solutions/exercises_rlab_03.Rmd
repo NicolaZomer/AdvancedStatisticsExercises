@@ -203,7 +203,7 @@ toc()
 
 gg_gen <- function(method){
   ggplot() + 
-    geom_histogram(aes(x=generated_points, y=..density..),  binwidth = 0.05, center = 0.05, fill='lightblue', colour="black") +
+    geom_histogram(aes(x=generated_points, y=..density..),  binwidth = 0.1, center = 0.1, fill='lightblue', colour="black") +
     stat_function(fun=function(x)d_triang(x, c(a, b, c)), color='firebrick', size=0.6) +
     labs(title=paste('Sampling results using the', method, 'method'), 
         x='X',
