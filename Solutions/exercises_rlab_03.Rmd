@@ -1,0 +1,104 @@
+---
+title: "Exercises Laboratory Session 03"
+author: "Nicola Zomer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: default
+---
+
+```{r setup-chunk}
+knitr::opts_chunk$set(dev = "ragg_png")
+options(digits=5) # set number of digits equal to 5
+
+```
+
+# Packages and functions
+
+```{r, message=FALSE}
+
+# tidyverse
+library(tidyverse)
+
+# others
+library(gridExtra)
+library(kableExtra)
+library(glue)
+library(highcharter)
+# library(scales)
+
+```
+
+Define a function for printing data frames with kable:
+
+```{r}
+
+mykable <- function(data) {
+  knitr::kable(data) %>% 
+    kable_styling()
+}
+
+```
+
+
+# Exercise 1
+
+
+### a) plot the function, given the interval (a, b)
+
+```{r}
+
+f <- function(x, a, b, c){
+  if (!(c>=a & c<=b)) stop('c is not between a and b')
+  
+  ifelse(
+    a<=x & x<c, 
+    2*(x-a)/((b-a)*(c-a)), 
+    ifelse(
+      c<=x & x<=b, 
+      2*(b-x)/((b-a)*(b-c)), 
+      0
+    )
+  )
+}
+
+a = -2
+b = 2
+c = 0
+
+x_plot = seq(-3, 3, by=0.2)
+ggplot()+
+  geom_line(aes(x=x_plot, y=f(x_plot, a, b, c)), linetype='dashed')+
+  geom_point(aes(x=x_plot, y=f(x_plot, a, b, c)))+
+  labs(
+    title='Triangular distribution, with a=-2, b=2, c=0', 
+    x='X', 
+    y='f(X)'
+  )+
+  scale_x_continuous(breaks=seq(-3, 3, by=0.5))+
+  theme_bw()
+
+
+
+
+```
+
+### b) and write an algorithm to generate random numbers from the triangular distribution
+### c) generate 104 random number from the distribution, show them in an histogram and superimpose the analytical curve
+
+# Exercise 2 - Markov’s inequality
+Plot G(k) and the Markov’s upper bound for
+a) the exponential, $Exp(\lambda = 1)$, distribution function
+b) the uniform, $U(3, 5)$, distribution function
+c) the binomial, $Bin(n = 1, p = 1=2)$, distribution function
+d) a Poisson, $Pois(\lambda = 1=2)$, distribution function
+
+### a) 
+### b)
+### c)
+### d)
+
+# Exercise 3 - Chebyshev’s inequality
+# Exercise 4 - Six Boxes Toy Model : inference
+# Exercise 5 - Six Boxes Toy Model : simulation
+
+

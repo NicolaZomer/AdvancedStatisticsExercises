@@ -5,3 +5,8 @@ Below you can find all the exercises carried out during the course. To download 
 * [Exercises R Laboratory 02](./Solutions/exercises_rlab_02.html)
   * Review of basic probability concepts
   * Probability distributions in R
+* [Exercises R Laboratory 03](./Solutions/exercises_rlab_03.html)
+  * Random numbers generation
+  * Markov’s inequality
+  * Chebyshev’s inequality
+  * The Six Boxes Toy Model: inference and simulation
