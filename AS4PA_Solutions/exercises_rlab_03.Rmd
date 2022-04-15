@@ -1,0 +1,286 @@
+---
+title: "Exercises Laboratory Session 03"
+author: "Nicola Zomer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: default
+---
+
+```{r setup-chunk}
+knitr::opts_chunk$set(dev = "ragg_png")
+options(digits=5) # set number of digits equal to 5
+
+```
+
+# Packages and functions
+
+```{r, message=FALSE}
+
+# tidyverse
+library(tidyverse)
+
+# others
+library(tictoc)
+library(gridExtra)
+library(kableExtra)
+library(glue)
+library(highcharter)
+
+```
+
+Define a function for printing data frames with kable:
+
+```{r}
+
+mykable <- function(data) {
+  knitr::kable(data) %>% 
+    kable_styling()
+}
+
+```
+
+
+# Exercise 1
+Consider the following triangular distribution
+$$
+f(x)=
+\begin{cases}
+  \frac{2(x-a)}{(b-a)(c-a)} & a\leq x < c \\
+  \frac{2(b-x)}{(b-a)(b-c)} & c\leq x < b \\
+  0 & \text{otherwise}
+\end{cases}
+$$
+where $c\in[a, b]$.
+
+### a) Plot the function, given the interval (a, b)
+
+```{r}
+
+d_triang <- function(x, params){
+  a = params[1]
+  b = params[2]
+  c = params[3]
+  
+  if (!(c>=a & c<=b)) stop('c is not between a and b')
+  
+  ifelse(
+    a<=x & x<c, 
+    2*(x-a)/((b-a)*(c-a)), 
+    ifelse(
+      c<=x & x<=b, 
+      2*(b-x)/((b-a)*(b-c)), 
+      0
+    )
+  )
+}
+
+a = -2
+b = 2
+c = 0
+
+x_plot = seq(-3, 3, by=0.1)
+
+# generic plot of a function
+myplot <- function(x_values, funct, args, title='My function', xlab = 'x', ylab='f(x)'){
+  ggplot()+
+    geom_line(aes(x=x_values, y=funct(x_values, args)))+
+    labs(
+      title=title, 
+      x=xlab, 
+      y=ylab
+    )+
+    scale_x_continuous(breaks=seq(x_values[1], tail(x_values, 1), by=0.5))+
+    theme_bw()
+  
+}
+
+myplot(x_plot, d_triang, c(a, b, c), title='PDF of the Triangular distribution, with a=-2, b=2, c=0', xlab='X', ylab='f(X)')
+
+
+```
+
+### b) Write an algorithm to generate random numbers from the triangular distribution
+
+
+#### Inverse transform method
+```{r}
+
+# Cumulative distribution
+p_triang <- function(x, params){
+  integrals = numeric(length(t))
+  for (i in seq_along(x)){
+    integrals[i] <- integrate(d_triang, lower=-Inf, upper = x[i], params)$value
+  }
+  return(integrals)
+}
+
+myplot(x_plot, p_triang, c(a, b, c), title='CDF of the Triangular distribution, with a=-2, b=2, c=0', xlab='X', ylab='F(X)')
+
+```
+
+
+```{r}
+
+# Inverse functions;
+# bounds set such that it searches for a solution in [-2, 2], the only interval in which the cdf is invertible
+inverse <- function(y, params){
+    uniroot(function(x){p_triang(x, params) - y}, lower = -2, upper = 2)$root
+}
+
+# Quantile function
+q_triang <- function(y, params, lower.value=-2, upper.value=2){
+  output <- numeric(length(y))
+  for (i in seq_along(y)){
+    if (y[i]==1) output[i]<-upper.value       # boundary value
+    else if (y[i]==0) output[i]<-lower.value  # boundary value
+    else output[i] <- inverse(y[i], params)
+  }
+  return(output)
+}
+
+# Generate random numbers 
+r_triang_1 <- function(n, params, seed=1){
+  set.seed(seed)
+  q_triang(runif(n), params)
+}
+
+```
+
+#### Acceptance/rejection method
+In order to use the acceptance/rejection method, we must find a finite interval $[a', b']$ in which the pdf is defined and a value $M\in\mathbb{R}$ such that $\forall x \in [a',b'] \; f(x)<M$. 
+
+My choices for the interval and $M$ are:
+- $[a', b'] = [a, b] = [-2, 2]$
+- $M=\max_{x\in[a, b]} f(x) = f(x=0) = 0.5$ 
+
+I select  interval $[a, b] = [-2, 2]$ and $M$ to be the maximum value of the pdf, i.e. $f(x=0)$
+
+```{r}
+d_triang(0, c(a, b, c))
+```
+
+
+```{r}
+
+r_triang_2 <- function(n, f, params, seed=1, a_=a, b_=b, M=0.5){
+  
+  set.seed(seed)
+  y = numeric(n)
+
+  i=1
+  while (i <= n){
+    
+    u_1 <- runif(1, a_, b_)
+    u_2 <- runif(1, 0, 1)
+    x_1 <- a + (b-a)*u_1
+    
+    if (u_2*M < f(u_1, params)){
+      y[i] <- u_1
+      i=i+1
+    }
+  }
+  return(y)
+}
+
+
+
+```
+
+
+### c) Generate $10^4$ random number from the distribution, show them in an histogram and superimpose the analytical curve
+#### Inverse transform method
+
+```{r}
+
+tic("Generate 10^4 random numbers using the inverse transform method")
+generated_points <- r_triang_1(10000, c(a, b, c))
+toc()
+
+```
+
+
+```{r, warning=FALSE}
+
+gg_gen <- function(method){
+  ggplot() + 
+    geom_histogram(aes(x=generated_points, y=..density..),  binwidth = 0.05, center = 0.05, fill='lightblue', colour="black") +
+    stat_function(fun=function(x)d_triang(x, c(a, b, c)), color='firebrick', size=0.6) +
+    labs(title=paste('Sampling results using the', method, 'method'), 
+        x='X',
+        y='Count (normalized)')+
+    scale_x_continuous(breaks=seq(-3, 3, by=0.5), limits=c(-3,3)) +
+    theme_bw()
+}
+
+gg_gen('inverse transform')
+
+```
+
+
+#### Acceptance/rejection method
+```{r, warning=FALSE}
+
+tic("Generate 10^4 random numbers using the acceptance/rejection method")
+generated_points <- r_triang_2(10000, d_triang, c(a, b, c))
+toc()
+
+gg_gen('acceptance/rejection')
+
+```
+
+
+# Exercise 2 - Markov’s inequality
+Markov’s inequality represents an upper bound to probability distributions. Having defined a function $G(k) = 1-F(k) \equiv P(X \geq k)$, plot $G(k)$ and the Markov’s upper bound for
+
+* **a)** the exponential, $Exp(\lambda = 1)$, distribution function
+* **b)** the uniform, $\mathcal{U}(3, 5)$, distribution function
+* **c)** the binomial, $Bin(n = 1, p = 1/2)$, distribution function
+* **d)** a Poisson, $Pois(\lambda = 1/2)$, distribution function
+
+### a) Exponential distribution function
+### b) Uniform distribution function
+### c) Binomial distribution function 
+### d) Poisson distribution function
+
+# Exercise 3 - Chebyshev’s inequality
+Use R to show, with a plot, that Chebyshev’s inequality is is an upper bound to the following distributions:
+
+* **a)** a normal distribution, $\mathcal{N}(\mu=3, \sigma=5)$
+* **b)** an exponential distribution $Exp(\lambda = 1)$
+* **c)** a uniform distribution, $\mathcal{U}(1-\sqrt{2}, 1+\sqrt{2})$
+* **d)** a Poisson, $Pois(\lambda = 1/3)$, distribution function
+
+### a) Normal distribution 
+### b) Exponential distribution 
+### c) Uniform distribution  
+### d) Poisson distribution 
+
+# Exercise 4 - Six Boxes Toy Model : inference
+The six boxes toy model is described in [[1]](https://arxiv.org/pdf/1612.05292.pdf).
+
+Write a program in R that:
+
+1. allows the user to insert the color of a randomly extracted box and
+2. prints on the standard output the probability of selecting each box
+3. plots the probability for each box as a function of the extraction step
+
+# Exercise 5 - Six Boxes Toy Model : simulation
+Consider again the six boxes toy model of the previous exercise and write a simulation program that:
+
+1. selects a random box
+2. makes random sampling from the box
+3. prints on the standard output the probability of selecting each box
+4. plots the probability for each box as a function of the number of trial
+
+
+# Bibliography
+<dl>
+  <dt>[1]</dt>
+  <dd>
+    G. D’Agostini, Probability, propensity and probabilities of propensities (and of probabilities), https://arxiv.org/pdf/1612.05292.pdf
+  </dd>
+  <dt>[2]</dt>
+  <dd>
+    G. D’Agostini, More lessons form the six box toy experiment, https://arxiv.org/pdf/1701.01143.pdf
+  </dd>
+</dl>

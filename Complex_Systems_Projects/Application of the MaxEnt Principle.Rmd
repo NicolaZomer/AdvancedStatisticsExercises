@@ -1,0 +1,195 @@
+---
+title: "Application of the MaxEnt Principle to estimate the less biased discrete probability distribution from data"
+author: "Nicola Zomer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: default
+---
+
+```{r setup-chunk}
+knitr::opts_chunk$set(dev = "ragg_png")
+options(digits=3) # set number of digits equal to 5
+
+```
+
+# Packages 
+
+```{r, message=FALSE}
+
+# tidyverse
+library(tidyverse)
+
+# others
+library(gridExtra)
+library(pracma)
+library(comprehenr)
+library(stats)
+library(latex2exp)
+library(highcharter)
+library(glue)
+
+```
+
+# Generate the data to analyze, according to a given probability distribution
+I want to start with a simple exponential discrete distribution, with a finite number of possible outcomes:
+$$
+P(X=x) = \frac{e^{-\mu x}}{Z} \quad , \quad x\in \{1, 2, ..., N\} 
+$$
+First of all, given $\mu$, we need to find the normalization factor $Z$, that is given by 
+$$
+Z=\sum_{x=1}^{N}e^{-\mu x}
+$$
+
+```{r}
+
+# parameters
+mu <- 0.1
+N <- 8
+
+# probability distribution
+possible_outcomes <- seq(1, N)
+Z <- sum(exp(-mu*possible_outcomes))
+
+p <- function(x){return(exp(-mu*x)/Z)}
+
+# check
+cat('Is the distribution normalized? Total sum =', sum(p(possible_outcomes)))
+
+```
+
+```{r}
+
+df_distrib <- data.frame('x'=possible_outcomes, 'P'=p(possible_outcomes))
+hc_pdf <- df_distrib %>% 
+  hchart('column', hcaes(x = x, y = P))%>%
+  hc_title(text='Probability distribution') %>% 
+  hc_xAxis(title = list(text = 'x')) %>%
+  hc_yAxis(title = list(text = 'P(x)')) 
+
+hc_pdf
+
+```
+
+Let's generate some data from this distribution. 
+
+```{r}
+
+set.seed(111)
+ndata <- 100000
+x <- sample(x=possible_outcomes, size=ndata, replace=TRUE, prob=p(possible_outcomes))
+
+# data frame
+hc_pdf <- as.data.frame(table(x)) %>% 
+  hchart('column', hcaes(x = x, y = Freq))%>%
+  hc_title(text='Sampling results from the defined distribution') %>% 
+  hc_xAxis(title = list(text = 'x')) %>%
+  hc_yAxis(title = list(text = 'Count')) 
+
+hc_pdf
+
+
+```
+# Application of the MaxEnt Principle to estimate the distribution from the generated data
+The MaxEnt principle can be used to find the most general probability distribution compatible with a set of constraints, by maximizing the Shannon entropy $S_I$ subject to these constraints. 
+
+Given a discrete event space $E={i}, i=1, ..., N$, with probabilities $p_i\geq0$, such that $\sum_i p_i =1$, we define the Shannon entropy (also called information entropy) of this probability distribution as
+
+$$
+S_I(p_1, ..., p_k) = - \sum_{i=1}^{N} p_i \ln p_i
+$$
+
+## Definition of the contraints 
+In this case, the constraints come from the measurements, not from some conservation law. Assume that the data obtained are sampled from an unknown distribution $\{p_i\}$, which is what we want to infer. We can impose some constraints on it by measuring the $k-th$ moments, for $k: 1,..., m$, where $m$ is a given number. In this case we can chose to set $m=3$.    
+
+We define the vector of the $k-th$ moments as $\mathbf{g}$, so that 
+
+$$
+E[X^a] \equiv \sum_{i=1}^{N}x_i^{a}\cdot p(x_i) = g^{(a)}  
+$$
+```{r}
+m = 3
+
+g <- to_vec(for (a in 1:m) mean(x^a))
+
+```
+
+
+## The MaxEnt Principle
+The application of the MaxEnt principle leads to finding the probabilities $\mathbf{p}=(p_1, ..., p_N)$ that maximize $S_I(\mathbf{p})$ and satisfy the $m+1$ constraints ($m$ from the moments and $1$ from the normalization). This is done by using the Lagrange's multipliers method. 
+
+By doing the calculation (see [2], pages 73-74), it is possible to find that $\mathbf{p_{max}}$ is given by
+
+$$
+p_j^{\text{max}} \equiv p_j(\mathbf{\lambda}) \equiv  \frac{1}{Z(\mathbf{\lambda})} \exp\left(-\sum_{a=1}^m \lambda_a x_j^a \right)
+$$
+
+where 
+
+$$
+Z(\mathbf{\lambda}) \equiv  \sum_{j=1}^N \exp\left(-\sum_{a=1}^m \lambda_a x_j^a \right) = \exp\left(1 + \lambda_0 \right) 
+$$
+
+with $\mathbf{\lambda} = (\lambda_1, \dots, \lambda_m)^T$.
+
+## The optimization problem
+To find $\mathbf{\lambda}$ we must impose the defined constraints. Following Manzali's notes ([2], page 74) we end up with the optimization problem
+$$
+\mathbf{\nabla_x}h(\mathbf{x})|_\mathbf{x=\lambda} = 0
+$$
+where 
+$$
+h(\mathbf{x}) \equiv \mathbf{g}\cdot\mathbf{x} + \ln Z(\mathbf{x})
+$$
+Let's solve this problem numerically.
+
+```{r}
+
+h <- function(lambda_vec){
+  if (length(lambda_vec) != m) {
+    stop('lambda_vec must be a vector of size m')
+  }
+  Z <- sum(
+    to_vec(
+      for (j in 1:N) exp(-sum(dot(lambda_vec, to_vec(for (a in 1:m) possible_outcomes[j]^a))))
+    )
+  )
+  
+  return(
+    dot(g, lambda_vec) + log(Z)
+  )
+}
+
+lambdas <- optim(numeric(m), h)
+if (lambdas$convergence != 0) {
+  cat('An error in convergence occurred')
+} else {
+  cat('Lagrange multipliers:\n')
+  for (i in seq_along(lambdas$par))
+  {
+    cat('lambda', i, '=', lambdas$par[i], '\n')
+  }
+}
+
+
+```
+
+## Results
+As expected, we found that $\lambda_1$ is close to $\mu=0.1$, while $\lambda_2$ and $\lambda_3$ are much smaller than $\lambda_1$ and almost zero. The resulting distribution is thus very close to that from which data were generated, and the constraints on $\langle  x^2 \rangle$ and  $\langle  x^3 \rangle$ doesn't provide any further information on the distribution.  
+
+## Conclusions
+
+
+
+# References 
+<dl>
+  <dt>[1]</dt>
+  <dd>
+    James P. Sethna. _Statistical Mechanics: Entropy, Order Parameters, and Complexity_. Oxford University Press, 2006. isbn: 9780198566779.
+  </dd>
+  <dt>[2]</dt>
+  <dd>
+    Francesco Manzali. _Notes of the course Statistical Mechanics of Complex System_. url: https://goldshish.it/notes/statistical-mechanics-of-complex-systems/notes-4
+  </dd>
+</dl>
+
+
