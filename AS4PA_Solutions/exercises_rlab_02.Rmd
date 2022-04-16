@@ -432,14 +432,13 @@ gg_sampling <- function(r_distribution, dp_distribution, nsamples, returnvalues 
         x=xlabel,
         y=ylabel)+
     scale_x_continuous(breaks=seq(0.7, 2.3, by=0.1), limits=c(0.7, 2.3)) +
-    theme_bw()+
-    theme(panel.grid.minor.x = element_blank()) 
+    theme_bw()
   
   plot(gg)
   if (returnvalues) return(sampled)
 }
 
-gg_sampling(r_custom_1, d_custom_1, 3000, xlabel='Time')
+gg_sampling(r_custom_1, d_custom_1, 3000, xlabel='Time (hours)')
 
 ```
 
@@ -493,8 +492,8 @@ r_custom_2 <- function(n, seed=1){
   q_custom_2(runif(n))
 }
 
-gg_distribution(d_custom_2(time), "Probability density function", "x", "f(x)")
-gg_distribution(p_custom_2(time), "Cumulative density function", "x", "F(x)")
+gg_distribution(d_custom_2(time), "Probability density function", "x (10^4 km)", "f(x)")
+gg_distribution(p_custom_2(time), "Cumulative density function", "x (10^4 km)", "F(x)")
 
 ```
 
@@ -541,7 +540,7 @@ cat('The probability that tires will last less than 15000 km is', p_custom_2(x_t
 ```{r, warning=FALSE}
 
 # sample and plot at the same time using the function defined above
-r_samples <- gg_sampling(r_custom_2, d_custom_2, 3000, returnvalues = TRUE, xlabel='x')
+r_samples <- gg_sampling(r_custom_2, d_custom_2, 3000, returnvalues = TRUE, xlabel='x (10^4 km)')
 
 ```
 ```{r}
