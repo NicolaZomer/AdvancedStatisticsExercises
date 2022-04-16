@@ -6,6 +6,6 @@ In addition to this, I also present here some works related to the [Statistical 
 All projects are carried out in R. 
 
 ## Visualization of the repository
-For a better view of the repository and the R codes it is recommended to use the following link: [AdvancedStatisticsExercises](https://nicolazomer.github.io/R_AdvStatistics_and_ComplexSystems/).
+For a better view of the repository and the R codes it is recommended to use the following link: [R_AdvStatistics_and_ComplexSystems](https://nicolazomer.github.io/R_AdvStatistics_and_ComplexSystems/).
 
 
