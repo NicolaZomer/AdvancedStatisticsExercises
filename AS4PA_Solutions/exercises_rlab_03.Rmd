@@ -25,6 +25,7 @@ library(gridExtra)
 library(kableExtra)
 library(glue)
 library(highcharter)
+library(latex2exp)
 
 ```
 
@@ -39,9 +40,9 @@ mykable <- function(data) {
 
 ```
 
-
 # Exercise 1
-Consider the following triangular distribution
+
+Consider the following triangular distribution 
 $$
 f(x)=
 \begin{cases}
@@ -49,7 +50,7 @@ f(x)=
   \frac{2(b-x)}{(b-a)(b-c)} & c\leq x < b \\
   0 & \text{otherwise}
 \end{cases}
-$$
+$$ 
 where $c\in[a, b]$.
 
 ### a) Plot the function, given the interval (a, b)
@@ -102,15 +103,15 @@ gg_triang(x_plot, d_triang, c(a, b, c), title='PDF of the Triangular distributio
 
 ### b) Write an algorithm to generate random numbers from the triangular distribution
 
-
 #### Inverse transform method
+
 ```{r}
 
 # Cumulative distribution
 p_triang <- function(x, params){
   integrals = numeric(length(t))
   for (i in seq_along(x)){
-    integrals[i] <- integrate(d_triang, lower=-Inf, upper = x[i], params)$value
+    integrals[i] <- integrate(d_triang, lower=a, upper = x[i], params)$value  # set lower to a=-2 instead than -Inf for speed reasons
   }
   return(integrals)
 }
@@ -118,7 +119,6 @@ p_triang <- function(x, params){
 gg_triang(x_plot, p_triang, c(a, b, c), title='CDF of the Triangular distribution, with a=-2, b=2, c=0', xlab='X', ylab='F(X)')
 
 ```
-
 
 ```{r}
 
@@ -148,19 +148,18 @@ r_triang_1 <- function(n, params, seed=1){
 ```
 
 #### Acceptance/rejection method
-In order to use the acceptance/rejection method, we must find a finite interval $[a', b']$ in which the pdf is defined and a value $M\in\mathbb{R}$ such that $\forall x \in [a',b'] \; f(x)<M$. 
+
+In order to use the acceptance/rejection method, we must find a finite interval $[a', b']$ in which the pdf is defined and a value $M\in\mathbb{R}$ such that $\forall x \in [a',b'] \; f(x)<M$.
 
 My choices for the interval and $M$ are:
-- $[a', b'] = [a, b] = [-2, 2]$
-- $M=\max_{x\in[a, b]} f(x) = f(x=0) = 0.5$ 
 
-I select  interval $[a, b] = [-2, 2]$ and $M$ to be the maximum value of the pdf, i.e. $f(x=0)$
+* $[a', b'] = [a, b] = [-2, 2]$
+* $M=\max_{x\in[a, b]} f(x) = f(x=0) = 0.5$
 
 ```{r}
 d_triang(0, c(a, b, c))
 
 ```
-
 
 ```{r}
 
@@ -185,8 +184,8 @@ r_triang_2 <- function(n, f, params, seed=1, a_=a, b_=b, M=0.5){
 
 ```
 
-
 ### c) Generate $10^4$ random number from the distribution, show them in an histogram and superimpose the analytical curve
+
 #### Inverse transform method
 
 ```{r}
@@ -196,7 +195,6 @@ generated_points <- r_triang_1(10000, c(a, b, c))
 toc()
 
 ```
-
 
 ```{r, warning=FALSE}
 
@@ -215,8 +213,8 @@ gg_gen('inverse transform')
 
 ```
 
-
 #### Acceptance/rejection method
+
 ```{r, warning=FALSE}
 
 tic("Generate 10^4 random numbers using the acceptance/rejection method")
@@ -227,16 +225,19 @@ gg_gen('acceptance/rejection')
 
 ```
 
+Notice that the acceptance/rejection method is much faster than the inverse transform method. This is due to the fact that the CDF and its inverse are not computed analytically, but numerically, and this slows down the second method a lot.
 
-# Exercise 2 - Markov’s inequality
-Markov’s inequality represents an upper bound to probability distributions. Having defined a function $G(k) = 1-F(k) \equiv P(X \geq k)$, plot $G(k)$ and the Markov’s upper bound for
 
-* **a)** the exponential, $Exp(\lambda = 1)$, distribution function
-* **b)** the uniform, $\mathcal{U}(3, 5)$, distribution function
-* **c)** the binomial, $Bin(n = 1, p = 1/2)$, distribution function
-* **d)** a Poisson, $Pois(\lambda = 1/2)$, distribution function
+# Exercise 2 - Markov's inequality
 
-I want to start by defining some general functions, such as $G(k)$, the Markov's upper bound and the plotting function. 
+Markov's inequality represents an upper bound to probability distributions. Having defined a function $G(k) = 1-F(k) \equiv P(X \geq k)$, plot $G(k)$ and the Markov's upper bound for
+
+- **a)** the exponential, $Exp(\lambda = 1)$, distribution function
+- **b)** the uniform, $\mathcal{U}(3, 5)$, distribution function
+- **c)** the binomial, $Bin(n = 1, p = 1/2)$, distribution function
+- **d)** a Poisson, $Pois(\lambda = 1/2)$, distribution function
+
+I want to start by defining some general functions, such as $G(k)$, the Markov's upper bound and the plotting function.
 
 ```{r}
 
@@ -252,7 +253,7 @@ markov_bound <- function(k, exp_value){
 gg_Markov <- function(k_values, cdf_values, exp_value, title="Markov's inequality", xlab = 'k', logscale=FALSE){
   ggplot() +
     geom_line(aes(x=k_values, y=markov_bound(k, exp_value), colour="Markov's bound"), size=0.6) +   # Markov's upper bound
-    geom_line(aes(x=k_values, y=G(cdf_values), color='G(k)'), size=0.7) +                           # G(k)
+    geom_line(aes(x=k_values, y=G(cdf_values), color='G(k)'), size=0.6) +                           # G(k)
     labs(
       title=title, 
       x=xlab 
@@ -269,27 +270,29 @@ gg_Markov <- function(k_values, cdf_values, exp_value, title="Markov's inequalit
 
 ```
 
-
 ### a) Exponential distribution function
+
 Since the Markov's upper bound diverges as $k$ approaches zero, I plot the distribution starting from $k=1$.
 
 ```{r}
 k <- seq(1, 10, by=0.05)
-gg_Markov(k, cdf_values=pexp(k, 1), exp_value=1, title="Markov's inequality, exponential distribution")
+gg_Markov(k, cdf_values=pexp(k, 1), exp_value=1, title=TeX("Markov's inequality, exponential distribution ($\\lambda=1$)"))
 
 ```
+
 ### b) Uniform distribution function
 
 ```{r}
 k <- seq(2, 6, by=0.05)
-gg_Markov(k, cdf_values=punif(k, 3, 5), exp_value=4, title="Markov's inequality, uniform distribution")
+gg_Markov(k, cdf_values=punif(k, 3, 5), exp_value=4, title=TeX("Markov's inequality, uniform distribution ($\\mu=3, \\sigma=5$)"))
 
 ```
 
-### c) Binomial distribution function 
+### c) Binomial distribution function
+
 The function $Bin(n = 1, p = 1/2)$ describes the probability of $x$ successes in 1 trial, where the probability of a success is $1/2$. So there are only 2 possible value of $x$ that give a non-zero probability: $x=0$ and $x=1$. Regarding the cumulative distribution, we have that $F(x=0)=f(x=0)=0.5$ and $F(x)=1 \; \forall x\geq 1$. So the only meaningful points are $x=0$ and $x=1$.
 
-Moreover, as the Markov's upper bound diverges in 0, it only makes sense to compute it in 1. 
+Moreover, as the Markov's upper bound diverges in 0, it only makes sense to compute it in 1.
 
 ```{r}
 
@@ -300,7 +303,7 @@ ggplot() +
   geom_segment(aes(x=k, xend=k, y=0, yend=y, color='G(k)')) +
   geom_point(aes(x=1, y=markov_bound(1, 1/2), colour="Markov's bound"), size=2.5) + 
   labs(
-      title="Markov's inequality, binomial distribution with n=1", 
+      title=TeX("Markov's inequality, binomial distribution ($n=1, p=1/2$)"), 
       x='k' 
     ) +
   scale_x_continuous(breaks=seq(-1, 2, by=1), limits=c(-0.5, 1.5)) +
@@ -311,82 +314,164 @@ ggplot() +
 ```
 
 ### d) Poisson distribution function
-Also in this case I plot the distribution starting from $k=1$, so not considering $k=0$, that corresponds to an infinite value of the Markov's bound. Here I use the logarithmic scale on the y axis, as $G(k)$ immediately becomes very small.
 
+Also in this case I plot the distribution starting from $k=1$, so not considering $k=0$, that corresponds to an infinite value of the Markov's bound. Here I use the logarithmic scale on the y axis, as $G(k)$ immediately becomes very small.
 
 ```{r}
 k <- seq(1, 10, by=0.05)
-gg_Markov(k, cdf_values=ppois(k, 1/2), exp_value=4, title="Markov's inequality, Poisson distribution", logscale=TRUE)
+gg_Markov(k, cdf_values=ppois(k, 1/2), exp_value=4, title=TeX("Markov's inequality, Poisson distribution ($\\lambda=1/2$)"), logscale=TRUE)
 
 ```
 
-# Exercise 3 - Chebyshev’s inequality
-Use R to show, with a plot, that Chebyshev’s inequality is is an upper bound to the following distributions:
+# Exercise 3 - Chebyshev's inequality
 
-* **a)** a normal distribution, $\mathcal{N}(\mu=3, \sigma=5)$
-* **b)** an exponential distribution $Exp(\lambda = 1)$
-* **c)** a uniform distribution, $\mathcal{U}(1-\sqrt{2}, 1+\sqrt{2})$
-* **d)** a Poisson, $Pois(\lambda = 1/3)$, distribution function
+Use R to show, with a plot, that Chebyshev's inequality is an upper bound to the following distributions:
 
+- **a)** a normal distribution, $\mathcal{N}(\mu=3, \sigma=5)$
+- **b)** an exponential distribution $Exp(\lambda = 1)$
+- **c)** a uniform distribution, $\mathcal{U}(1-\sqrt{2}, 1+\sqrt{2})$
+- **d)** a Poisson, $Pois(\lambda = 1/3)$, distribution function
 
-First I need to define some general functions that I will use to show that Chebyshev’s inequality is is an upper bound of the given distributions.
+First I need to define some general functions that I will use to show that Chebyshev's inequality is an upper bound of the given distributions.
+
+- `prob_ksigma`: returns, for a given probability distribution, the probability that X deviates of at least $k\cdot\sigma$ from its expected value, so 
+$$
+    \begin{align*}
+      P\left[|X-\mu|\geq k \sigma\right]&=P[X \in (-\infty, \mu-k\sigma] \cup [\mu+k\sigma, \infty)]=P[X\leq \mu -k \sigma]+P[X\geq\mu+k \sigma] = \\          & = F[\mu-k\sigma]+(1-F[u+k\sigma])+P[X=\mu+k\sigma]
+    \end{align*}
+$$ 
+  While in the continuous case the last probability is zero, as it is the probability of one single value, for a discrete distribution, when $\mu+k\sigma$ is integer, it must be considered . 
+- `chebyshev_bound`: Chebyshev's upper bound to the above probabilities
+$$
+    P\left[|X-\mu|\geq k \sigma\right]\leq\frac{1}{k^2}
+$$
+- `gg_Chebyshev`: plot function.
 
 ```{r}
 
+prob_ksigma <- function(k, cdf, mu, sigma){
+  return(cdf(mu-k*sigma)+1-cdf(mu+k*sigma))
+}
+
+chebyshev_bound <- function(k){
+  return(1/k^2)
+}
+
+gg_Chebyshev <- function(k_values, cdf, mu, sigma, title="Chebyshev's inequality", xlab = 'k', logscale=FALSE){
+  ggplot() +
+    geom_line(aes(x=k_values, y=chebyshev_bound(k_values), colour='M'), size=0.6) +               # Chebyshev's upper bound
+    geom_line(aes(x=k_values, y=prob_ksigma(k_values, cdf, mu, sigma), color='P'), size=0.6) +    # P(k...)
+    labs(
+      title=title, 
+      x=xlab 
+    ) +
+    {if (logscale==TRUE) {
+        scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+                      labels = scales::trans_format("log10", scales::math_format(10^.x)))}
+    }+
+    scale_x_continuous(breaks=seq(1, 10, by=1)) +
+    scale_color_manual(values = c("M" = 'firebrick', 'P' = 'steelblue'), labels=unname(TeX(c("Chebishev's bound", "$P(|X-\\mu|\\geq k\\sigma)$")))) + 
+    theme_bw() +
+    theme(axis.title.y=element_blank(), legend.title= element_blank())
+  
+}
+
+```
+
+### a) Normal distribution
+Test of the function `prob_ksigma`:
+```{r}
+for (i in 1:3){
+  cat('Probability that X is within', i, 'sigma in the normal distribution:', 1-prob_ksigma(i, function(x) pnorm(x, 0, 1), 0, 1), '\n')
+}
+
 ```
 
 
-### a) Normal distribution 
+```{r}
+k <- seq(1, 10, by=0.1)
+
+gg_Chebyshev(k, function(x) pnorm(x, 3, 5), mu=3, sigma=5, title=TeX("Chebyshev's inequality, normal distribution ($\\mu=3, \\sigma=5$)"))
+
+```
+
+### b) Exponential distribution
 
 ```{r}
 
+lambda <- 1
+gg_Chebyshev(k, function(x) pexp(x, lambda), mu=1/lambda, sigma=1/lambda, title=TeX("Chebyshev's inequality, exponential distribution ($\\lambda=1)"))
+
 ```
 
-### b) Exponential distribution 
+### c) Uniform distribution
 
 ```{r}
 
-```
+a <- 1-sqrt(2)
+b <- 1+sqrt(2)
+sigma_un <- (b-a)/sqrt(12)
 
-### c) Uniform distribution  
+# k such that k*sigma = b-a/2
+k_zero <- (b-a)/(2*sigma_un)
+
+gg_Chebyshev(seq(1, 10, by=0.05), function(x) punif(x, a, b), mu=(a+b)/2, sigma=sigma_un, title=TeX("Chebyshev's inequality, uniform distribution ($a=1-\\sqrt{2}, b=1+\\sqrt{2}$)")) + 
+  geom_point(aes(k_zero, 0), color='black', size=2) +
+  annotate('text', x = k_zero+0.7, y = 0.04, label = '(1.73, 0)') +
+  theme(plot.title = element_text(size=12))
+
+```
+```{r}
+cat('k such that k*sigma is equal to half the length of the interval:', k_zero)
+
+```
+For larger values of $k$, the probability of being outside the interval $(\mu-k\sigma, \mu+k\sigma)$ is obviously zero, as the distribution is always zero in the region outside $(a, b)$.  
+
+
+### d) Poisson distribution
+As $\lambda=1/3$, we have that $\mu=1/3$ and $\sigma=1/\sqrt{3}$. For this reason and for the numerical uncertainty due to computer approximations, $\mu+k\sigma$ is unlikely to be integer. Moreover, the probability function of the Poisson distribution is defined only for integer value. All this leads me to neglect $P[X=\mu+k\sigma]$ in the formula defined above. This makes even more sense if we think that to have $1/3+k/\sqrt{3}$ integer $k$ would have to be an integer multiple of $\sqrt{3}$, so an irrational number and a number that surely won't be passed to `prob_ksigma`.
 
 ```{r}
 
-```
-
-### d) Poisson distribution 
-
-```{r}
+lambda <- 1/3
+gg_Chebyshev(k, function(x) ppois(x, lambda), mu=lambda, sigma=sqrt(lambda), title=TeX("Chebyshev's inequality, Poisson distribution ($\\lambda=1/3)"), logscale=TRUE)
 
 ```
-
 
 # Exercise 4 - Six Boxes Toy Model : inference
 The six boxes toy model is described in [[1]](https://arxiv.org/pdf/1612.05292.pdf).
 
 Write a program in R that:
 
-1. allows the user to insert the color of a randomly extracted box and
-2. prints on the standard output the probability of selecting each box
-3. plots the probability for each box as a function of the extraction step
+1.  allows the user to insert the color of a randomly extracted box and
+2.  prints on the standard output the probability of selecting each box
+3.  plots the probability for each box as a function of the extraction step
 
 # Exercise 5 - Six Boxes Toy Model : simulation
+
 Consider again the six boxes toy model of the previous exercise and write a simulation program that:
 
-1. selects a random box
-2. makes random sampling from the box
-3. prints on the standard output the probability of selecting each box
-4. plots the probability for each box as a function of the number of trial
-
+1.  selects a random box
+2.  makes random sampling from the box
+3.  prints on the standard output the probability of selecting each box
+4.  plots the probability for each box as a function of the number of trial
 
 # Bibliography
+
 <dl>
-  <dt>[1]</dt>
-  <dd>
-    G. D’Agostini, Probability, propensity and probabilities of propensities (and of probabilities), https://arxiv.org/pdf/1612.05292.pdf
-  </dd>
-  <dt>[2]</dt>
-  <dd>
-    G. D’Agostini, More lessons form the six box toy experiment, https://arxiv.org/pdf/1701.01143.pdf
-  </dd>
+
+<dt>
+  [1]
+</dt>
+<dd>
+  G. D'Agostini, Probability, propensity and probabilities of propensities (and of probabilities), <https://arxiv.org/pdf/1612.05292.pdf>
+</dd>
+
+<dt>
+  [2]
+</dt>
+<dd>
+  G. D'Agostini, More lessons form the six box toy experiment, <https://arxiv.org/pdf/1701.01143.pdf>
+</dd>
+
 </dl>
