@@ -541,7 +541,7 @@ head(prob_H_steps[dim(prob_H_steps)[1]:1, 1:(dim(prob_H_steps)[2]-1)], 5) %>%
 hw_grid(hc_plot(0), hc_plot(1), hc_plot(2), hc_plot(3), hc_plot(4), hc_plot(5), ncol=3, rowheight=350)
 
 ```
-The resulting plot of my simulation can be found here: [6 boxes toy model](https://github.com/NicolaZomer/R_AdvStatistics_and_ComplexSystems/blob/main/AS4PA_Solutions/results/6_boxes_toy_model.html).
+The resulting plot of my simulation can be downloaded here (download the entire folder, including the subfolder "lib"): [6 boxes toy model](https://github.com/NicolaZomer/R_AdvStatistics_and_ComplexSystems/tree/main/AS4PA_Solutions/6_boxes_toy_model).
 
 # Exercise 5 - Six Boxes Toy Model : simulation
 

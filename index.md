@@ -10,7 +10,8 @@ Below you can find all the exercises carried out during the course. To download 
   * Random numbers generation
   * Markov’s inequality
   * Chebyshev’s inequality
-  * The Six Boxes Toy Model: inference and simulation ([resulting plot of my inference simulation](https://github.com/NicolaZomer/R_AdvStatistics_and_ComplexSystems/blob/main/AS4PA_Solutions/results/6_boxes_toy_model.html))
+  * The Six Boxes Toy Model: inference and simulation
+* [Exercises R Laboratory 04](./AS4PA_Solutions/exercises_rlab_04.html)
 
 # Statistical Mechanics of Complex Systems projects
 [Application of the MaxEnt Principle](./Complex_Systems_Projects/Application-of-the-MaxEnt-Principle.html) <br>
