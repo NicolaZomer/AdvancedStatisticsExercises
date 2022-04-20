@@ -26,19 +26,14 @@ library(kableExtra)
 library(glue)
 library(highcharter)
 library(latex2exp)
+library(pracma)
+library(pander)
+library(htmltools)
+
+options(highcharter.theme = hc_theme_elementary())
 
 ```
 
-Define a function for printing data frames with kable:
-
-```{r}
-
-mykable <- function(data) {
-  knitr::kable(data) %>% 
-    kable_styling()
-}
-
-```
 
 # Exercise 1
 
@@ -443,9 +438,110 @@ The six boxes toy model is described in [[1]](https://arxiv.org/pdf/1612.05292.p
 
 Write a program in R that:
 
-1.  allows the user to insert the color of a randomly extracted box and
+1.  allows the user to insert the color of a randomly extracted stone, after having randomly chosen one box
 2.  prints on the standard output the probability of selecting each box
 3.  plots the probability for each box as a function of the extraction step
+
+### Description of the boxes
+- $H_0$: 5 black stones
+- $H_1$: 4 black stones, 1 white stone
+- $H_2$: 3 black stones, 2 white stone
+- $H_3$: 2 black stones, 3 white stone
+- $H_4$: 1 black stones, 4 white stone
+- $H_5$: 5 white stones
+
+## Variables
+- `j` --> vector containing the numbers associated to each box
+- `p_H` --> vector containing the probability of each hypothesis (box)
+- `p_W_H --> vector of the probabilities of observing a white, given the box $j$
+- `p_W_B --> vector of the probabilities of observing a black, given the box $j$
+
+
+```{r, eval=FALSE}
+
+j <- 0:5 
+
+# initialize the probabilities
+p_H <- c(rep(1/6, 6))
+
+# conditional probability of observing a white or black
+p_W_H <- j/5
+p_B_H <- (5-j)/5
+
+
+# dataframe of all the probabilities, as a function of the extraction step
+prob_H_steps <- data.frame(matrix(ncol=length(j)+1, nrow=0))
+colnames(prob_H_steps) <- c('H_0', 'H_1', 'H_2', 'H_3', 'H_4', 'H_5', 'color')
+
+i <- 1
+cat('\014')
+
+# plot function
+hc_plot <- function(i_H){
+  hc <- prob_H_steps %>% 
+    mutate_if(is.numeric, round, digits=4) 
+    
+  hc <- {if(i_H == 0){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_0, group=color), color=col)
+    }else if(i_H == 1){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_1, group=color), color=col)
+    }else if(i_H == 2){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_2, group=color), color=col)
+    }else if(i_H == 3){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_3, group=color), color=col)
+    }else if(i_H == 4){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_4, group=color), color=col)
+    }else if(i_H == 5){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_5, group=color), color=col)}} %>%
+    hc_title(text=paste('H', i_H, sep=''), align='center') %>% 
+    hc_xAxis(title = list(text = 'Extraction step')) %>%
+    hc_yAxis(title = list(text=paste('P(H', i_H, ')', sep='')), min=0, max=1) 
+}
+
+repeat{
+  i_color <- menu(c('White', 'Black', 'End the game'), title='What color has been extracted?')
+  if (i_color == 3) break
+  
+  # update p_H depending on the extracted color
+  if (i_color == 1){
+    p_H <- (p_W_H*p_H)/dot(p_W_H, p_H)
+    col <- 'W'
+    
+  }else if(i_color == 2){
+    p_H <- (p_B_H*p_H)/dot(p_B_H, p_H)
+    col <- 'B'
+  }
+  
+  # print on the standard output the probability of selecting each box
+  cat('\nProbability of selecting each box:\n\n')
+  print(p_H)
+  cat('\n')
+  
+  # update the dataframe with the probabilities
+  prob_H_steps[i,] <- append(p_H, list(col))
+  i <- i+1
+  
+  # check if the extracted stones are of one color only and update plot color list accordingly
+  if (length(unique(prob_H_steps$color))==1){
+    if (unique(prob_H_steps$color)=='W'){
+      col <- c('steelblue')
+    }else if (unique(prob_H_steps$color)=='B'){
+      col <- c('firebrick')
+    }
+  }else{
+    col <- c('firebrick', 'steelblue')
+  }
+  
+  # plot in browser
+  save_html(hw_grid(hc_plot(0), hc_plot(1), hc_plot(2), hc_plot(3), hc_plot(4), hc_plot(5), ncol=3, rowheight=350), file="6_boxes_toy_model.html")
+  openFileInOS("6_boxes_toy_model.html")
+}
+
+head(prob_H_steps[dim(prob_H_steps)[1]:1, 1:(dim(prob_H_steps)[2]-1)], 5) %>% 
+  kable(row.names=TRUE, digits=4, caption='Probability of selecting each box in the last 5 steps') %>%
+  kable_styling()
+
+```
+
+```{r, eval=FALSE}
+hw_grid(hc_plot(0), hc_plot(1), hc_plot(2), hc_plot(3), hc_plot(4), hc_plot(5), ncol=3, rowheight=350)
+
+```
+The resulting plot of my simulation can be found here: [6 boxes toy model](https://github.com/NicolaZomer/R_AdvStatistics_and_ComplexSystems/tree/main/AS4PA_Solutions/results/6_boxes_toy_model.html).
 
 # Exercise 5 - Six Boxes Toy Model : simulation
 
