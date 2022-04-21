@@ -1,0 +1,85 @@
+---
+title: "Exercises Laboratory Session 03"
+author: "Nicola Zomer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: default
+---
+
+```{r setup-chunk}
+knitr::opts_chunk$set(dev = "ragg_png")
+options(digits=5) # set number of digits equal to 5
+
+```
+
+# Packages and functions
+
+```{r, message=FALSE}
+
+# tidyverse
+library(tidyverse)
+
+# others
+library(gridExtra)
+library(kableExtra)
+library(glue)
+library(highcharter)
+library(latex2exp)
+library(pracma)
+
+options(highcharter.theme = hc_theme_elementary())
+
+```
+
+
+# Exercise 1 - Community Mobility Open Data
+Community Mobility Reports have been created with the aim to provide insights into what has changed in response to policies aimed at combating COVID-19. Data can be found at https://www.google.com/covid19/mobility/.
+
+Download and analyze the following data sets:
+
+* https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv 
+* https://www.gstatic.com/covid19/mobility/Region_Mobility_Report_CSVs.zip
+
+Select a couple of European countries of your choice and analyze the trends in the variables over time: produce a plot of the data by averaging the observable over a period of one week (hint: convert the data field to lubridate::week) and one month and quantify the impact of COVID-19 restrictions on mobility sitations.
+
+# Exercise 2 - Random number generators
+One of the first random number generator was proposed by von Neumann, the so-called _middle square_ algorithm. 
+
+Write R code to implement this type of generator and, given a fixed digit number input, square it an remove the leading and trailing digits, in order to return a number with the same number of digits as the original number.
+
+# Exercise 3 - Bayesian Inference
+
+A publishing company has recently launched a new journal. In order to determine how effective it is in reaching its possible audience, a market survey company selects a random sample of people from a possible target audience and interviews them. Out of 150 interviewed people, 29 have read the last issue of the journal.
+
+### a) What kind of distribution would you assume for y, the number of people that have seen the last issue of the journal?
+
+### b) Assuming a uniform prior, what is the posterior distribution for y ?
+
+### c) Plot both posterior and likelihood ditributions functions
+
+# Exercise 4 - Bayesian Inference
+A coin is flipped n = 30 times with the following outcomes:
+
+T, T, T, T, T, H, T, T, H, H, T, T, H, H, H, T, H, T, H, T, H, H, T, H, T, H, T, H, H, H
+
+### a) Assuming a flat prior, and a beta prior, plot the likelihood, prior and posterior distributions for the data set.
+
+### b) Evaluate the most probable value for the coin probability p and, integrating the posterior probability distribution, give an estimate for a 95% credibility interval.
+
+### c) Repeat the same analysis assuming a sequential analysis of the data. Show how the most probable value and the credibility interval change as a function of the number of coin tosses (i.e. from 1 to 30).
+
+### d) Do you get a different result, by analyzing the data sequentially with respect to a one-step analysis (i.e. considering all the data as a whole)?
+
+
+
+
+
+
+
+
+
+
+
+
+
+

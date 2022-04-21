@@ -104,7 +104,7 @@ gg_triang(x_plot, d_triang, c(a, b, c), title='PDF of the Triangular distributio
 
 # Cumulative distribution
 p_triang <- function(x, params){
-  integrals = numeric(length(t))
+  integrals = numeric(length(x))
   for (i in seq_along(x)){
     integrals[i] <- integrate(d_triang, lower=a, upper = x[i], params)$value  # set lower to a=-2 instead than -Inf for speed reasons
   }
@@ -492,6 +492,8 @@ hc_plot <- function(i_H){
     hc_yAxis(title = list(text=paste('P(H', i_H, ')', sep='')), min=0, max=1) 
 }
 
+check_unique_color <- TRUE
+
 repeat{
   i_color <- menu(c('White', 'Black', 'End the game'), title='What color has been extracted?')
   if (i_color == 3) break
@@ -516,14 +518,17 @@ repeat{
   i <- i+1
   
   # check if the extracted stones are of one color only and update plot color list accordingly
-  if (length(unique(prob_H_steps$color))==1){
-    if (unique(prob_H_steps$color)=='W'){
-      col <- c('steelblue')
-    }else if (unique(prob_H_steps$color)=='B'){
-      col <- c('firebrick')
+  if (check_unique_color){ 
+    if (length(unique(prob_H_steps$color))==1){
+      if (unique(prob_H_steps$color)=='W'){
+        col <- c('steelblue')
+      }else if (unique(prob_H_steps$color)=='B'){
+        col <- c('firebrick')
+      }
+    }else{
+      col <- c('firebrick', 'steelblue')
+      check_unique_col <- FALSE
     }
-  }else{
-    col <- c('firebrick', 'steelblue')
   }
   
   # plot in browser
@@ -551,6 +556,89 @@ Consider again the six boxes toy model of the previous exercise and write a simu
 2.  makes random sampling from the box
 3.  prints on the standard output the probability of selecting each box
 4.  plots the probability for each box as a function of the number of trial
+
+```{r}
+
+n_steps <- 20
+box <- sample(0:5, 1)
+
+j <- 0:5 
+
+# initialize the probabilities
+p_H <- c(rep(1/6, 6))
+
+# conditional probability of observing a white or black
+p_W_H <- j/5
+p_B_H <- (5-j)/5
+
+# conditional probability of observing a white or black
+p_W <- box/5
+p_B <- (5-box)/5
+
+# dataframe of all the probabilities, as a function of the extraction step
+prob_H_steps <- data.frame(matrix(ncol=length(j)+1, nrow=0))
+colnames(prob_H_steps) <- c('H_0', 'H_1', 'H_2', 'H_3', 'H_4', 'H_5', 'color')
+
+i <- 1
+
+while(i<=n_steps){
+  i_color <- sample(c(1, 2), 1, prob=c(p_W, p_B))
+  
+  # update p_H depending on the extracted color
+  if (i_color == 1){
+    p_H <- (p_W_H*p_H)/dot(p_W_H, p_H)
+    col <- 'W'
+    
+  }else if(i_color == 2){
+    p_H <- (p_B_H*p_H)/dot(p_B_H, p_H)
+    col <- 'B'
+  }
+  
+  # update the dataframe with the probabilities
+  prob_H_steps[i,] <- append(p_H, list(col))
+  i <- i+1
+}
+
+# print on the standard output the probability of selecting each box
+cat('Probability of selecting each box:\n\n')
+print(p_H)
+cat('\n')
+
+```
+
+
+```{r}
+# plot function (equal to the one of the exercise 4)
+hc_plot <- function(i_H){
+  hc <- prob_H_steps %>% 
+    mutate_if(is.numeric, round, digits=4) 
+    
+  hc <- {if(i_H == 0){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_0, group=color), color=col)
+    }else if(i_H == 1){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_1, group=color), color=col)
+    }else if(i_H == 2){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_2, group=color), color=col)
+    }else if(i_H == 3){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_3, group=color), color=col)
+    }else if(i_H == 4){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_4, group=color), color=col)
+    }else if(i_H == 5){hc %>% hchart('point', hcaes(x=1:dim(prob_H_steps)[1], y=H_5, group=color), color=col)}} %>%
+    hc_title(text=paste('H', i_H, sep=''), align='center') %>% 
+    hc_xAxis(title = list(text = 'Extraction step')) %>%
+    hc_yAxis(title = list(text=paste('P(H', i_H, ')', sep='')), min=0, max=1) 
+}
+
+# check if the extracted stones are of one color only and update plot color list accordingly
+if (length(unique(prob_H_steps$color))==1){
+  if (unique(prob_H_steps$color)=='W'){
+    col <- c('steelblue')
+  }else if (unique(prob_H_steps$color)=='B'){
+    col <- c('firebrick')
+  }
+}else{
+  col <- c('firebrick', 'steelblue')
+}
+
+# plot
+hw_grid(hc_plot(0), hc_plot(1), hc_plot(2), hc_plot(3), hc_plot(4), hc_plot(5), ncol=3, rowheight=350)
+
+```
 
 # Bibliography
 
