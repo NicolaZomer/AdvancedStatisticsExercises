@@ -1,7 +1,7 @@
 # AS4PA exercises
 Below you can find all the exercises carried out during the course. To download them in Rmd format, follow the link to the GitHub repository.
 * [Exercises R Laboratory 01](./AS4PA_Solutions/exercises_rlab_01.html) <br>
-  First exercises in R to become familiar with the syntax and to start writing some basic instructions. In particular, the last one consists of a brief analysis of Covid19 Vaccine data.
+  First exercises in R to become familiar with the syntax and to start writing some basic instructions. In particular, the last one consists of a brief analysis of Covid-19 Vaccine data.
   
 * [Exercises R Laboratory 02](./AS4PA_Solutions/exercises_rlab_02.html)
   * Review of basic probability concepts
@@ -12,6 +12,9 @@ Below you can find all the exercises carried out during the course. To download 
   * Chebyshev’s inequality
   * The Six Boxes Toy Model: inference and simulation
 * [Exercises R Laboratory 04](./AS4PA_Solutions/exercises_rlab_04.html)
+  * Community Mobility Open Data (analysis of Covid-19 data sets)
+  * Random number generation using the _middle square algorithm_
+  * Bayesian Inference
 
 # Statistical Mechanics of Complex Systems projects
 [Application of the MaxEnt Principle](./Complex_Systems_Projects/Application-of-the-MaxEnt-Principle.html) <br>
