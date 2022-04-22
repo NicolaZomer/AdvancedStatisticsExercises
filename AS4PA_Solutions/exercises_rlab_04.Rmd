@@ -25,7 +25,6 @@ library(kableExtra)
 library(glue)
 library(highcharter)
 library(latex2exp)
-library(pracma)
 
 options(highcharter.theme = hc_theme_elementary())
 
@@ -40,12 +39,66 @@ Download and analyze the following data sets:
 * https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv 
 * https://www.gstatic.com/covid19/mobility/Region_Mobility_Report_CSVs.zip
 
-Select a couple of European countries of your choice and analyze the trends in the variables over time: produce a plot of the data by averaging the observable over a period of one week (hint: convert the data field to lubridate::week) and one month and quantify the impact of COVID-19 restrictions on mobility sitations.
+Select a couple of European countries of your choice and analyze the trends in the variables over time: produce a plot of the data by averaging the observable over a period of one week (hint: convert the data field to `lubridate::week`) and one month and quantify the impact of COVID-19 restrictions on mobility situations.
+
+```{r}
+
+```
+
 
 # Exercise 2 - Random number generators
 One of the first random number generator was proposed by von Neumann, the so-called _middle square_ algorithm. 
 
 Write R code to implement this type of generator and, given a fixed digit number input, square it an remove the leading and trailing digits, in order to return a number with the same number of digits as the original number.
+
+```{r}
+
+middle_square <- function(x.start=5772156649, n){
+  input.digits <- length(unlist(strsplit(as.character(x.start),"")))
+  
+  # print(paste('Number of digits of the input number:', input.digits))
+  if (x.start%%1 != 0) stop('The starting number must be integer')
+  
+  x.squared.char <- unlist(strsplit(as.character(x.start^2),""))  
+  half.output.digits <- length(x.squared.char)%/%2
+  
+  if (input.digits%%2 ==0){ # even number of digits
+    x.i <- x.squared.char[(half.output.digits-(input.digits/2-1)):(half.output.digits+input.digits/2)]
+  } else{ # odd number of digits
+    x.i <- x.squared.char[(half.output.digits-(input.digits%/%2)):(half.output.digits+input.digits%/%2)]
+  }
+  
+  # check if the first digit is zero: in this case shift to the left
+  i<-1
+  while (x.i[1]=="0"){
+    print(x.i)
+    if (input.digits%%2 ==0){ # even number of digits
+      x.i <- x.squared.char[(half.output.digits-(input.digits/2-1)-i):(half.output.digits+input.digits/2-i)]
+    } else{ # odd number of digits
+      x.i <- x.squared.char[(half.output.digits-(input.digits%/%2)-i):(half.output.digits+input.digits%/%2-i)]
+    }
+    i<-i+1
+  }
+  return(as.numeric(paste(x.i, collapse="")))
+}
+
+```
+
+Generate 10 numbers using the _middle square_ algorithm:
+```{r}
+
+numbers <- numeric(11)
+numbers[1] <- 5772156649
+
+for (i in 1:10){
+  numbers[i+1] <- middle_square(numbers[i])
+}
+
+data.frame(Iteration=0:10, Generated.Number=numbers) %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+
+```
 
 # Exercise 3 - Bayesian Inference
 
@@ -53,9 +106,22 @@ A publishing company has recently launched a new journal. In order to determine 
 
 ### a) What kind of distribution would you assume for y, the number of people that have seen the last issue of the journal?
 
+```{r}
+
+```
+
 ### b) Assuming a uniform prior, what is the posterior distribution for y ?
 
+```{r}
+
+```
+
 ### c) Plot both posterior and likelihood ditributions functions
+
+```{r}
+
+```
+
 
 # Exercise 4 - Bayesian Inference
 A coin is flipped n = 30 times with the following outcomes:
@@ -64,12 +130,27 @@ T, T, T, T, T, H, T, T, H, H, T, T, H, H, H, T, H, T, H, T, H, H, T, H, T, H, T,
 
 ### a) Assuming a flat prior, and a beta prior, plot the likelihood, prior and posterior distributions for the data set.
 
+```{r}
+
+```
+
 ### b) Evaluate the most probable value for the coin probability p and, integrating the posterior probability distribution, give an estimate for a 95% credibility interval.
+
+```{r}
+
+```
 
 ### c) Repeat the same analysis assuming a sequential analysis of the data. Show how the most probable value and the credibility interval change as a function of the number of coin tosses (i.e. from 1 to 30).
 
+```{r}
+
+```
+
 ### d) Do you get a different result, by analyzing the data sequentially with respect to a one-step analysis (i.e. considering all the data as a whole)?
 
+```{r}
+
+```
 
 
 
