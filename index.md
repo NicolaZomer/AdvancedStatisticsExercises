@@ -15,6 +15,10 @@ Below you can find all the exercises carried out during the course. To download 
   * Community Mobility Open Data (analysis of Covid-19 data sets)
   * Random number generation using the _middle square algorithm_
   * Bayesian Inference
+* [Exercises R Laboratory 05](./AS4PA_Solutions/exercises_rlab_05.html)
+  * Bayesian inference for a Poisson process
+  * The Lighthouse problem
+  * Signal over Background
 
 # Statistical Mechanics of Complex Systems projects
 [Application of the MaxEnt Principle](./Complex_Systems_Projects/Application-of-the-MaxEnt-Principle.html) <br>

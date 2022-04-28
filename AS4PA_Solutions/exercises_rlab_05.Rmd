@@ -1,0 +1,98 @@
+---
+title: "Exercises Laboratory Session 05"
+author: "Nicola Zomer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: default
+---
+
+```{r setup-chunk}
+knitr::opts_chunk$set(dev = "ragg_png")
+options(digits=5) # set number of digits equal to 5
+
+```
+
+# Packages and functions
+
+```{r, message=FALSE}
+
+# tidyverse
+library(tidyverse)
+
+# others
+library(gridExtra)
+library(kableExtra)
+library(glue)
+library(highcharter)
+library(latex2exp)
+
+options(highcharter.theme = hc_theme_elementary())
+
+```
+
+# Exercise 1
+The number of particles emitted by a radioactive source during a fixed interval of time ($\Delta t=10s$) follows a Poisson distribution on the parameter $\mu$. The number of particles observed during
+consecutive time intervals is: 4, 1, 3, 1 and 3. 
+
+### a) Suppose a uniform prior distribution for the parameter $\mu$
+* Determine and draw the posterior distribution for $\mu$, given the data
+
+```{r}
+
+```
+
+* Evaluate mean, median and variance, both analytically and numerically in R
+
+```{r}
+
+```
+
+### b) Suppose a Jeffrey's prior for the parameter $\mu$
+* Determine and draw the posterior distribution for $\mu$, given the data
+
+```{r}
+
+```
+
+* Evaluate mean, median and variance, both analytically and numerically in R
+
+```{r}
+
+```
+
+### c) Evaluate a 95% credibility interval for the results obtained with both priors
+Compare the result with that obtained using a normal approximation for the posterior distribution, with the same mean and standard deviation.
+
+# Exercise 2
+Given the problem of the lighthouse discussed last week, study the case in which both the position along the shore ($\alpha$) and the distance out at sea ($\beta$) are unknown. 
+
+![](images/lighthouse.png)
+
+```{r}
+
+```
+
+
+# Exercise 3
+Given the Signal over Background example discussed last week, analyze and discuss the following cases:
+
+### a) Vary the sampling resolution used to generate the data, keeping the same sampling range
+
+`xdat <- seq(from=-7*w, to=7*w, by=0.5*w)`
+
+* change the resolution $w = {0.1,  0.25,  1,  2, 3}
+* check the effect on the results
+
+```{r}
+
+```
+
+### b) Change the ration A/B used to simulate the data (keeping both positive in accordance with the prior)
+* check the effect on the results
+
+```{r}
+
+```
+
+
+

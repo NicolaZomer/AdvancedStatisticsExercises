@@ -1,5 +1,5 @@
 ---
-title: "Exercises Laboratory Session 03"
+title: "Exercises Laboratory Session 04"
 author: "Nicola Zomer"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -20,13 +20,12 @@ options(digits=5) # set number of digits equal to 5
 library(tidyverse)
 
 # others
-library(gridExtra)
 library(kableExtra)
-library(glue)
-library(highcharter)
+library(patchwork)
+library(ggpubr)
 library(latex2exp)
-
-options(highcharter.theme = hc_theme_elementary())
+#library(gridExtra)
+#library(glue)
 
 ```
 
@@ -42,6 +41,8 @@ Download and analyze the following data sets:
 Select a couple of European countries of your choice and analyze the trends in the variables over time: produce a plot of the data by averaging the observable over a period of one week (hint: convert the data field to `lubridate::week`) and one month and quantify the impact of COVID-19 restrictions on mobility situations.
 
 ```{r}
+
+
 
 ```
 
@@ -108,17 +109,20 @@ A publishing company has recently launched a new journal. In order to determine 
 
 ```{r}
 
+
 ```
 
 ### b) Assuming a uniform prior, what is the posterior distribution for y ?
 
 ```{r}
 
+
 ```
 
 ### c) Plot both posterior and likelihood ditributions functions
 
 ```{r}
+
 
 ```
 
@@ -128,15 +132,74 @@ A coin is flipped n = 30 times with the following outcomes:
 
 T, T, T, T, T, H, T, T, H, H, T, T, H, H, H, T, H, T, H, T, H, H, T, H, T, H, T, H, H, H
 
+Notice that there are 15 T and 15 H
+
 ### a) Assuming a flat prior, and a beta prior, plot the likelihood, prior and posterior distributions for the data set.
 
 ```{r}
 
+n <- 30
+r <- 15
+
+nsamples <- 200
+p <- seq(0, 1, length = nsamples)
+delta.p <- 1/nsamples
+
+unif.post <- dbinom(x=r, size=n, prob=p)
+unif.post.norm <- unif.post/(delta.p*sum(unif.post))
+
+ggplot()+
+  geom_line(aes(x=p, y=unif.post.norm, color='Posterior and likelihood'), size=0.6)+
+  geom_line(aes(x=p, y=dunif(p), color='Prior'), size=0.6)+
+  labs(
+    title='Flat prior', 
+    x='p', 
+    y=TeX('$P(p|r,n, M)$')
+  )+
+  scale_color_manual(name = "", values = c("Posterior and likelihood" = "steelblue", "Prior" = "firebrick"))+
+  theme(legend.title= element_blank())+
+  theme_bw()
+
 ```
+```{r, fig.height=18, fig.width=18}
+
+alpha <- 10; beta <- 10
+
+
+gg_beta <- function(alpha, beta){
+  ggplot()+
+    geom_line(aes(x=p, y=dbeta(x=p, alpha+r, beta+n-r), color='Posterior'), size=1)+
+    geom_line(aes(x=p, y=dbinom(x=r, size=n, prob=p), color='Likelihood'), size=1)+
+    geom_line(aes(x=p, y=dbeta(p, alpha , beta), color='Prior'), size=1)+
+    labs(
+      title=paste('Beta prior (', alpha, ', ', beta, ')', sep=''), 
+      x='p', 
+      y=TeX('$P(p|r,n, M)$')
+    )+
+    scale_color_manual(name = "", values = c("Posterior" = "steelblue", "Likelihood"= "darkgreen", "Prior" = "firebrick"))+
+    theme_bw()+
+    theme(legend.title = element_blank(), 
+          plot.title  = element_text(size=22), 
+          axis.text   = element_text(size=18),
+          axis.title  = element_text(size=18), 
+          legend.text = element_text(size=22))
+}
+
+combined <- (gg_beta(1,1) +ylim(0,6) + gg_beta(1,5) +ylim(0,6) + gg_beta(1,10) +ylim(0,10) )/
+            (gg_beta(5,1) +ylim(0,6) + gg_beta(5,5) +ylim(0,6) + gg_beta(5,10) +ylim(0,6))/ 
+            (gg_beta(10,1)+ylim(0,10)+ gg_beta(10,5)+ylim(0,6) + gg_beta(10,10)+ylim(0,6)) & theme(legend.position = "bottom")
+
+combined + plot_layout(guides = "collect")
+
+
+
+```
+
 
 ### b) Evaluate the most probable value for the coin probability p and, integrating the posterior probability distribution, give an estimate for a 95% credibility interval.
 
 ```{r}
+
 
 ```
 
