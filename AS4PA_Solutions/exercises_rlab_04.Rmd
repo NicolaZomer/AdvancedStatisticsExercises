@@ -24,8 +24,8 @@ library(kableExtra)
 library(patchwork)
 library(ggpubr)
 library(latex2exp)
+library(glue)
 #library(gridExtra)
-#library(glue)
 
 ```
 
@@ -42,7 +42,15 @@ Select a couple of European countries of your choice and analyze the trends in t
 
 ```{r}
 
+filepath='../../data/'
 
+italy_20 <- read_csv(paste(filepath, '2020_IT_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
+italy_21 <- read_csv(paste(filepath, '2021_IT_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
+italy_22 <- read_csv(paste(filepath, '2022_IT_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
+
+uk_20 <- read_csv(paste(filepath, '2020_GB_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
+uk_21 <- read_csv(paste(filepath, '2021_GB_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
+uk_22 <- read_csv(paste(filepath, '2022_GB_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
 
 ```
 
@@ -200,12 +208,107 @@ combined + plot_layout(guides = "collect")
 
 ```{r}
 
+argmax <- function(x){
+  max.x <- max(x)
+  found <- FALSE
+  
+  imax <- 
+  i <- 1
+  while (!found & i<=length(x)){
+    if (x[i]==max.x){
+      found <- TRUE
+      return(i)
+    }
+    i <- i+1
+  }
+}
+
+# uniform
+mpv.unif <- p[argmax(unif.post.norm)]
+glue('Most probable value with an uniform prior: p={format(mpv.unif, digits=4)}')
+
+# beta (10, 10)
+beta.post.10 <- dbeta(x=p, 10+r, 10+n-r)
+mpv.beta <- p[argmax(beta.post.10)]
+glue('Most probable value with a beta prior (alpha=10, beta=10): p={format(mpv.beta ,digits=4)}')
 
 ```
+```{r}
+
+cred.interval <- function(p.post.funct, nsamples=200, perc=0.95){
+    p <- seq(0, 1, length=nsamples)
+    
+    p.imax <- p[argmax(p.post.funct(p))]
+    x.1.found <- FALSE
+    x.2.found <- FALSE
+    
+    i<-1
+    while (!x.1.found & p[i]<=p.imax){
+      int.i <- integrate(p.post.funct, p[i], p.imax)$value
+      int.iplus <- integrate(p.post.funct, p[i+1], p.imax)$value
+      
+      if (between(perc/2, int.iplus, int.i)){
+        x.1.found <- TRUE
+        x.1 <- (p[i]+p[i+1])/2
+      }
+      i <- i+1 
+    }
+    i <- nsamples
+    while (!x.2.found & p[i]>=p.imax){
+      int.i <- integrate(p.post.funct, p.imax, p[i])$value
+      int.iminus <- integrate(p.post.funct, p.imax, p[i-1])$value
+      
+      if (between(perc/2, int.iminus, int.i)){
+        x.2.found <- TRUE
+        x.2 <- (p[i]+p[i-1])/2
+      }
+      i <- i-1 
+    }
+    return(c(x.1,x.2))
+    
+}
+
+credlim.unif <- cred.interval(function(x){dbeta(x, 1+r, 1+n-r)}) # beta distribution with alpha=1, beta=1
+credlim.beta.10 <- cred.interval(function(x){dbeta(x, 10+r, 10+n-r)})
+
+print(credlim.unif)
+print(credlim.beta.10)
+
+
+```
+```{r}
+
+range.95.beta <- seq(credlim.beta.10[1], credlim.beta.10[2], length=200)
+range.95.unif <- seq(credlim.unif[1], credlim.unif[2], length=200)
+
+gg_credlim <- function(alpha, beta, range95, limits, Title='Posterior'){
+  ggplot()+
+  geom_line(aes(x=p, y=dbeta(x=p, alpha+r, beta+n-r)), size=1, color='steelblue')+
+  geom_area(aes(x=range95, y=dbeta(x=range95, alpha+r, alpha+n-r)), fill='lightblue', color='steelblue', size=1)+
+  labs(
+    title=Title, 
+    x='p', 
+    y=TeX('$P(p|r,n, M)$')
+  )+
+  ylim(0, 6)+
+  geom_vline(xintercept=limits, linetype='dashed')+
+  annotate('text', x =limits[1]-0.06, y = 5, label=paste('x1=', round(limits[1], 2), sep=''))+
+  annotate('text', x =limits[2]+0.06, y = 5, label=paste('x2=', round(limits[2], 2), sep=''))+
+  theme_bw()
+  
+}
+
+gg_credlim(10, 10, range.95.beta, credlim.beta.10, 'Posterior with beta (10,10) prior')
+gg_credlim(1, 1, range.95.unif, credlim.unif, 'Posterior with uniform prior')
+
+
+```
+
 
 ### c) Repeat the same analysis assuming a sequential analysis of the data. Show how the most probable value and the credibility interval change as a function of the number of coin tosses (i.e. from 1 to 30).
 
 ```{r}
+
 
 ```
 
