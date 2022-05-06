@@ -25,6 +25,7 @@ library(patchwork)
 library(ggpubr)
 library(latex2exp)
 library(glue)
+library(lubridate)
 #library(gridExtra)
 
 ```
@@ -42,18 +43,139 @@ Select a couple of European countries of your choice and analyze the trends in t
 
 ```{r}
 
+# DEFINE THE FILEPATH (folder containing the files with the data by country)
 filepath='../../data/'
-
-italy_20 <- read_csv(paste(filepath, '2020_IT_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
-italy_21 <- read_csv(paste(filepath, '2021_IT_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
-italy_22 <- read_csv(paste(filepath, '2022_IT_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
-
-uk_20 <- read_csv(paste(filepath, '2020_GB_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
-uk_21 <- read_csv(paste(filepath, '2021_GB_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
-uk_22 <- read_csv(paste(filepath, '2022_GB_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
 
 ```
 
+```{r}
+
+df_country_processed <- function(df_original, type='week'){
+  # type can be 'week' or 'month'
+  
+  year <- year(df_original$date[1])
+  country_code <- df_original$country_region_code[1]
+  
+  
+  if (type=='week') df_original$date <- week(df_original$date)
+  else if (type=='month') df_original$date <- month(df_original$date)
+  else stop('Insert a correct conversion type!')
+  
+  return(df_original %>%
+    subset(is.na(sub_region_1)&is.na(sub_region_2)) %>%
+    group_by(date) %>%
+    summarize(
+       retail_and_recreation = mean(retail_and_recreation_percent_change_from_baseline, na.rm=TRUE),
+       grocery_and_pharmacy  = mean(grocery_and_pharmacy_percent_change_from_baseline,  na.rm=TRUE),
+       parks                 = mean(parks_percent_change_from_baseline, na.rm=TRUE),
+       transit_stations      = mean(transit_stations_percent_change_from_baseline, na.rm=TRUE), 
+       workplaces            = mean(workplaces_percent_change_from_baseline, na.rm=TRUE),
+       residential           = mean(residential_percent_change_from_baseline, na.rm=TRUE)
+    ) %>%
+    add_column(country_code, .after=0) %>%
+    add_column(year, .after=1) 
+  )
+  
+}
+
+```
+
+
+```{r}
+
+gg_observable <- function(observable, country_region_code='', type='week'){
+  
+  country_20 <- read_csv(paste(filepath, '2020_', country_region_code, '_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
+  country_21 <- read_csv(paste(filepath, '2021_', country_region_code, '_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
+  country_22 <- read_csv(paste(filepath, '2022_', country_region_code, '_Region_Mobility_Report.csv', sep=''), col_names=TRUE)
+  
+  df_list <- list(country_20, country_21, country_22)
+  
+  ggplot()+
+    geom_line(data=df_country_processed(df_list[[1]], type=type), aes(x=date, y=get(observable), color='2020'), size=1)+
+    geom_line(data=df_country_processed(df_list[[2]], type=type), aes(x=date, y=get(observable), color='2021'), size=1)+
+    geom_line(data=df_country_processed(df_list[[3]], type=type), aes(x=date, y=get(observable), color='2022'), size=1)+
+    labs(
+      title = names(observable),
+      x = type,
+      y = 'Perc. change from baseline' 
+    )+
+    {if (type=='week') scale_x_continuous(breaks=seq(0, 54, by=6))}+
+    #{if (type=='month') scale_x_continuous(breaks=seq(1, 12, by=1), minor_breaks=seq(1, 12, by=1))}+
+    {if (type=='month') scale_x_continuous(breaks=seq(1, 12, by=1), minor_breaks=seq(1, 12, by=1), labels=month.abb[1:12])}+
+    scale_color_manual(name = "", values = c('2020' = 'steelblue', 
+                                             '2021' = 'darkgreen', 
+                                             '2022' = 'firebrick'))+
+    theme_bw()+
+    theme(legend.title = element_blank(), 
+          plot.title  = element_text(size=20, hjust=0.5), 
+          axis.text   = element_text(size=14),
+          axis.title  = element_text(size=14), 
+          legend.text = element_text(size=20))
+}
+
+
+gg_tot_obs <- function(cr_code, country_name, type='week'){
+  
+  observables <- c("retail_and_recreation", "grocery_and_pharmacy", "parks", "transit_stations", "workplaces", "residential")
+  names(observables) <- c("Retail and recreation", "Grocery and pharmacy", "Parks ", "Transit stations", "Workplaces", "Residential")
+  
+  (gg_observable(observables[1], cr_code, type=type) + gg_observable(observables[2], cr_code, type=type) + gg_observable(observables[3], cr_code, type=type)) /
+  (gg_observable(observables[4], cr_code, type=type) + gg_observable(observables[5], cr_code, type=type)) +
+  plot_layout(guides = "collect") +
+  plot_annotation(
+    title = paste('Community Mobility Reports of ', country_name, ' by ', type, sep=''),
+    caption = 'Source: https://www.gstatic.com/covid19/mobility/Region_Mobility_Report_CSVs.zip', 
+    theme = theme(plot.title = element_text(size = 26, hjust = 0.5), 
+                  plot.caption = element_text(size = 14))
+  ) &
+  theme(legend.position = "bottom")
+}
+
+
+```
+
+### Italy
+
+```{r, fig.height=12, fig.width=18, message=FALSE}
+
+gg_tot_obs('IT', 'Italy', 'week')
+gg_tot_obs('IT', 'Italy', 'month')
+
+```
+
+### United Kingdom
+
+```{r, fig.height=12, fig.width=18, message=FALSE}
+
+gg_tot_obs('GB', 'United Kingdom', 'week')
+gg_tot_obs('GB', 'United Kingdom', 'month')
+
+```
+
+### France
+
+```{r, fig.height=12, fig.width=18, message=FALSE}
+
+gg_tot_obs('FR', 'France', 'week')
+gg_tot_obs('FR', 'France', 'month')
+
+```
+
+### Germany
+
+```{r, fig.height=12, fig.width=18, message=FALSE}
+
+gg_tot_obs('GE', 'Germany', 'week')
+gg_tot_obs('GE', 'Germany', 'month')
+
+```
+
+### Results
+
+In all countries shown and in all categories it can be seen how the curve of 2021 is above that of 2020, apart from the first months of the year (from January to March). The time spent in the categorized places therefore grows in general from 2020 to 2021, almost surely due to a relaxation of the mobility restrictions. The behavior in the first months of the year is explained by the fact that in 2020 there were still no policies in place aimed at combating COVID-19, which then led to a decrease in the time spent in these places in 2021. With regard to 2022, it is possible to see that the curve for now appears to be above that of 2020, in all states and in all categories, a sign of further easing of COVID restrictions. 
+
+Finally, notice that the important drop in April 2020 appears precisely in conjunction with the initial period of very strong restrictions. 
 
 # Exercise 2 - Random number generators
 One of the first random number generator was proposed by von Neumann, the so-called _middle square_ algorithm. 
@@ -114,22 +236,56 @@ data.frame(Iteration=0:10, Generated.Number=numbers) %>%
 A publishing company has recently launched a new journal. In order to determine how effective it is in reaching its possible audience, a market survey company selects a random sample of people from a possible target audience and interviews them. Out of 150 interviewed people, 29 have read the last issue of the journal.
 
 ### a) What kind of distribution would you assume for y, the number of people that have seen the last issue of the journal?
-
-```{r}
-
-
-```
+Since I have no prior knowledge about the data, I assume a uniform distribution for $y$. I could make a different choice, such as a beta distribution, if for example I had an idea of the expected value of $y$, or I could cut the uniform prior if I thought it is highly unlikely that everyone or no one has read the journal. In the latter case I would choose a trapezoidal distribution. Having no information, the best choice seems to me a uniform distribution, which corresponds to the least amount of bias.
 
 ### b) Assuming a uniform prior, what is the posterior distribution for y ?
-
-```{r}
-
-
-```
+Assuming a uniform prior, the posterior distribution is simply proportional to the likelihood, which in this case is a Binomial distribution with parameters $n=150$, $r=29$. So
+$$
+P(\pi|r=29, n=100, M) = \begin{pmatrix} 100\\ 29\end{pmatrix} \pi^{29}(1-\pi)^{100-29} = Binom(n=100, r=29, p=\pi)
+$$
 
 ### c) Plot both posterior and likelihood ditributions functions
 
 ```{r}
+
+p <- seq(0, 1, length=1000)
+delta.p <- 1/1000
+r <- 29
+n <- 150
+
+journal.prior <- dunif(p, min=0, max=1)
+journal.likelihood <- dbinom(r, n, p)
+journal.posterior.norm <- journal.likelihood/(delta.p*sum(journal.likelihood))
+
+ggplot()+
+  geom_line(aes(x=p, y=journal.prior), color='steelblue', size=0.8)+
+  labs(
+    title='Journal readings prior',
+    x=TeX('$p$'), 
+    y=TeX('$P(\\pi|M)$$')
+  )+
+  scale_y_continuous(breaks=seq(0, 1.2, by=0.2), limits=c(0, 1.1))+
+  theme_bw()
+
+ggplot()+
+  geom_line(aes(x=p, y=journal.likelihood), color='steelblue', size=0.8)+
+  labs(
+    title='Journal readings likelihood',
+    x=TeX('$p$'), 
+    y=TeX('$P(\\pi|r, n, M)$$')
+  )+
+  theme_bw()
+
+ggplot()+
+  geom_line(aes(x=p, y=journal.posterior.norm), color='steelblue', size=0.8)+
+  geom_vline(xintercept=r/n, linetype='dashed')+
+  annotate('text', x=r/n+0.09, y=12.5, label=paste('mode = ', round(r/n, 2), sep=''))+
+  labs(
+    title='Journal readings posterior',
+    x=TeX('$p$'), 
+    y=TeX('$P(\\pi|r, n, M)$$')
+  )+
+  theme_bw()
 
 
 ```
@@ -140,49 +296,56 @@ A coin is flipped n = 30 times with the following outcomes:
 
 T, T, T, T, T, H, T, T, H, H, T, T, H, H, H, T, H, T, H, T, H, H, T, H, T, H, T, H, H, H
 
-Notice that there are 15 T and 15 H
+Notice that there are 15 T and 15 H.
 
 ### a) Assuming a flat prior, and a beta prior, plot the likelihood, prior and posterior distributions for the data set.
 
+Flat prior
 ```{r}
 
 n <- 30
 r <- 15
 
-nsamples <- 200
+nsamples <- 1000
 p <- seq(0, 1, length = nsamples)
 delta.p <- 1/nsamples
 
+unif.prior <- dunif(p)
 unif.post <- dbinom(x=r, size=n, prob=p)
 unif.post.norm <- unif.post/(delta.p*sum(unif.post))
 
 ggplot()+
-  geom_line(aes(x=p, y=unif.post.norm, color='Posterior and likelihood'), size=0.6)+
-  geom_line(aes(x=p, y=dunif(p), color='Prior'), size=0.6)+
+  geom_line(aes(x=p, y=unif.post.norm, color='Posterior and likelihood'), size=0.7)+
+  geom_line(aes(x=p, y=unif.prior, color='Prior'), size=0.7)+
   labs(
     title='Flat prior', 
-    x='p', 
-    y=TeX('$P(p|r,n, M)$')
+    x=TeX('$p$'), 
+    y='Density'
   )+
   scale_color_manual(name = "", values = c("Posterior and likelihood" = "steelblue", "Prior" = "firebrick"))+
   theme(legend.title= element_blank())+
   theme_bw()
 
 ```
+Beta prior
 ```{r, fig.height=18, fig.width=18}
 
-alpha <- 10; beta <- 10
+nsamples <- 1000
+p <- seq(0, 1, length = nsamples)
+delta.p <- 1/nsamples
 
+n <- 30
+r <- 15
 
 gg_beta <- function(alpha, beta){
   ggplot()+
     geom_line(aes(x=p, y=dbeta(x=p, alpha+r, beta+n-r), color='Posterior'), size=1)+
     geom_line(aes(x=p, y=dbinom(x=r, size=n, prob=p), color='Likelihood'), size=1)+
-    geom_line(aes(x=p, y=dbeta(p, alpha , beta), color='Prior'), size=1)+
+    geom_line(aes(x=p, y=dbeta(x=p, alpha , beta), color='Prior'), size=1)+
     labs(
       title=paste('Beta prior (', alpha, ', ', beta, ')', sep=''), 
       x='p', 
-      y=TeX('$P(p|r,n, M)$')
+      y='Density' #TeX('$P(p|r,n, M)$')
     )+
     scale_color_manual(name = "", values = c("Posterior" = "steelblue", "Likelihood"= "darkgreen", "Prior" = "firebrick"))+
     theme_bw()+
@@ -199,8 +362,6 @@ combined <- (gg_beta(1,1) +ylim(0,6) + gg_beta(1,5) +ylim(0,6) + gg_beta(1,10) +
 
 combined + plot_layout(guides = "collect")
 
-
-
 ```
 
 
@@ -212,7 +373,6 @@ argmax <- function(x){
   max.x <- max(x)
   found <- FALSE
   
-  imax <- 
   i <- 1
   while (!found & i<=length(x)){
     if (x[i]==max.x){
@@ -228,78 +388,103 @@ mpv.unif <- p[argmax(unif.post.norm)]
 glue('Most probable value with an uniform prior: p={format(mpv.unif, digits=4)}')
 
 # beta (10, 10)
+beta.prior.10 <- dbeta(x=p, 10, 10)
 beta.post.10 <- dbeta(x=p, 10+r, 10+n-r)
 mpv.beta <- p[argmax(beta.post.10)]
 glue('Most probable value with a beta prior (alpha=10, beta=10): p={format(mpv.beta ,digits=4)}')
 
+# plot both posterior
+ggplot()+
+  geom_line(aes(x=p, y=unif.post.norm, color='Uniform prior'), size=0.7)+
+  geom_line(aes(x=p, y=beta.post.10, color='Beta(10, 10) prior'), size=0.7)+
+  geom_vline(xintercept=mpv.beta, linetype='dashed', size=0.6)+
+  annotate('text', x=mpv.beta+0.06, y=0.5, label=paste(round(mpv.beta, 3), sep=''))+
+  labs(
+    title='Coin tossing posterior', 
+    x=TeX('$p$'), 
+    y=TeX('$P(p|r,n, M)$')
+  )+
+  scale_color_manual(name = "", values = c("Beta(10, 10) prior" = "steelblue", "Uniform prior" = "darkgray"))+
+  theme(legend.title= element_blank())+
+  theme_bw()
+
+
 ```
+
 ```{r}
 
-cred.interval <- function(p.post.funct, nsamples=200, perc=0.95){
+setClass(Class="CredInterval",
+        representation(
+              x1="numeric",
+              x2="numeric"
+          )
+)
+
+cred.interval <- function(p.post.funct, nsamples=1000, perc=0.95){
+  
     p <- seq(0, 1, length=nsamples)
+    cred.range <- (1-perc)/2
     
-    p.imax <- p[argmax(p.post.funct(p))]
     x.1.found <- FALSE
     x.2.found <- FALSE
     
     i<-1
-    while (!x.1.found & p[i]<=p.imax){
-      int.i <- integrate(p.post.funct, p[i], p.imax)$value
-      int.iplus <- integrate(p.post.funct, p[i+1], p.imax)$value
+    while (!x.1.found){
+      int.i <- integrate(p.post.funct, 0, p[i])$value
+      int.iplus <- integrate(p.post.funct, 0, p[i+1])$value
       
-      if (between(perc/2, int.iplus, int.i)){
+      if (between(cred.range, int.i, int.iplus)){
         x.1.found <- TRUE
         x.1 <- (p[i]+p[i+1])/2
       }
       i <- i+1 
     }
     i <- nsamples
-    while (!x.2.found & p[i]>=p.imax){
-      int.i <- integrate(p.post.funct, p.imax, p[i])$value
-      int.iminus <- integrate(p.post.funct, p.imax, p[i-1])$value
+    while (!x.2.found){
+      int.i <- integrate(p.post.funct, p[i], tail(p, 1))$value
+      int.iminus <- integrate(p.post.funct, p[i-1], tail(p, 1))$value
       
-      if (between(perc/2, int.iminus, int.i)){
+      if (between(cred.range, int.i, int.iminus)){
         x.2.found <- TRUE
         x.2 <- (p[i]+p[i-1])/2
       }
       i <- i-1 
     }
-    return(c(x.1,x.2))
-    
+    return(new("CredInterval", x1 = x.1, x2 = x.2))
 }
 
 credlim.unif <- cred.interval(function(x){dbeta(x, 1+r, 1+n-r)}) # beta distribution with alpha=1, beta=1
 credlim.beta.10 <- cred.interval(function(x){dbeta(x, 10+r, 10+n-r)})
 
-print(credlim.unif)
-print(credlim.beta.10)
-
-
+glue('Credibility interval limits, with uniform prior: \nx1={format(credlim.unif@x1, digits=3)}, x2={format(credlim.unif@x2, digits=3)}')
+glue('Credibility interval limits, with Beta(10,10) prior: \nx1={format(credlim.beta.10@x1, digits=3)}, x2={format(credlim.beta.10@x2, digits=3)}')
 ```
+
 ```{r}
 
-range.95.beta <- seq(credlim.beta.10[1], credlim.beta.10[2], length=200)
-range.95.unif <- seq(credlim.unif[1], credlim.unif[2], length=200)
+range.95.unif <- seq(credlim.unif@x1, credlim.unif@x2, length=200)
+range.95.beta <- seq(credlim.beta.10@x1, credlim.beta.10@x2, length=200)
 
 gg_credlim <- function(alpha, beta, range95, limits, Title='Posterior'){
   ggplot()+
-  geom_line(aes(x=p, y=dbeta(x=p, alpha+r, beta+n-r)), size=1, color='steelblue')+
-  geom_area(aes(x=range95, y=dbeta(x=range95, alpha+r, alpha+n-r)), fill='lightblue', color='steelblue', size=1)+
-  labs(
-    title=Title, 
-    x='p', 
-    y=TeX('$P(p|r,n, M)$')
-  )+
-  ylim(0, 6)+
-  geom_vline(xintercept=limits, linetype='dashed')+
-  annotate('text', x =limits[1]-0.06, y = 5, label=paste('x1=', round(limits[1], 2), sep=''))+
-  annotate('text', x =limits[2]+0.06, y = 5, label=paste('x2=', round(limits[2], 2), sep=''))+
-  theme_bw()
-  
+    geom_line(aes(x=p, y=dbeta(x=p, alpha+r, beta+n-r)), size=0.7, color='steelblue')+
+    geom_area(aes(x=range95, y=dbeta(x=range95, alpha+r, alpha+n-r)), fill='lightblue', color='steelblue', size=0.7)+
+    labs(
+      title=Title, 
+      x='p', 
+      y=TeX('$P(p|r,n, M)$')
+    )+
+    ylim(0, 6)+
+    geom_vline(xintercept=limits, linetype='dashed', size=0.6)+
+    geom_vline(xintercept=0.5, linetype='dashed', size=0.6, color='firebrick')+
+    annotate('text', x =limits[1]-0.06, y = 5.2, label=paste('x1=', round(limits[1], 2), sep=''))+
+    annotate('text', x =limits[2]+0.06, y = 5.2, label=paste('x2=', round(limits[2], 2), sep=''))+
+    annotate('text', x =0.5+0.045, y = 6, label='mode', color='firebrick')+
+    theme_bw()
 }
 
-gg_credlim(10, 10, range.95.beta, credlim.beta.10, 'Posterior with beta (10,10) prior')
-gg_credlim(1, 1, range.95.unif, credlim.unif, 'Posterior with uniform prior')
+gg_credlim(1, 1, range.95.unif, c(credlim.unif@x1, credlim.unif@x2), 'Posterior with uniform prior')
+gg_credlim(10, 10, range.95.beta, c(credlim.beta.10@x1, credlim.beta.10@x2), 'Posterior with beta (10,10) prior')
 
 
 ```
@@ -307,16 +492,162 @@ gg_credlim(1, 1, range.95.unif, credlim.unif, 'Posterior with uniform prior')
 
 ### c) Repeat the same analysis assuming a sequential analysis of the data. Show how the most probable value and the credibility interval change as a function of the number of coin tosses (i.e. from 1 to 30).
 
+First, I store the data assigning $0$ to $H$ and $1$ to $T$. Here I assume a uniform prior. 
+
 ```{r}
 
+H<-0
+T<-1
+coin.toss.data <- c(T, T, T, T, T, H, T, T, H, H, T, T, H, H, H, T, H, T, H, T, H, H, T, H, T, H, T, H, H, H)
+
+# vector of probabilities
+npoints <- 1000
+p <- seq(0, 1, length = npoints)
+delta.p <- 1/npoints
+
+# initialize outputs
+unif.mode <- numeric(30)
+unif.x1 <- numeric(30)
+unif.x2 <- numeric(30)
+
+beta10.mode <- numeric(30)
+beta10.x1 <- numeric(30)
+beta10.x2 <- numeric(30)
+
+# initialize priors
+unif.prior.i <- dunif(p)
+beta10.prior.i <- dbeta(p, 10, 10)
+
+for (i in 1:30){
+  r = coin.toss.data[i] # toss one coin
+  n = 1                 # n is fixed and equal to 1
+  
+  # likelihood
+  likelihood <- dbinom(r, n, p)
+  
+  # posterior
+  unif.post.i <- likelihood*unif.prior.i
+  unif.post.i <- unif.post.i/(delta.p*sum(unif.post.i))
+  
+  beta10.post.i <- likelihood*beta10.prior.i
+  beta10.post.i <- beta10.post.i/(delta.p*sum(beta10.post.i))
+
+  # store results
+  unif.mode[i] <- p[argmax(unif.post.i)]
+  beta10.mode[i] <- p[argmax(beta10.post.i)]
+  
+  # to get the credibility interval I can't used the function defined above because it requires the analytical form of the posterior
+  unif.x1[i] <- p[cumsum(unif.post.i/npoints)>0.025][1]
+  unif.x2[i] <- p[cumsum(unif.post.i/npoints)>=0.975][1]
+  beta10.x1[i] <- p[cumsum(beta10.post.i/npoints)>0.025][1]
+  beta10.x2[i] <- p[cumsum(beta10.post.i/npoints)>=0.975][1]
+  
+  # update the priors
+  unif.prior.i <- unif.post.i
+  beta10.prior.i <- beta10.post.i
+
+}
+
+```
+
+Plot the final posterior distributions, including the most probable value and credibility interval.
+```{r}
+
+cred_range_unif <- p[cumsum(unif.post.i/npoints)>0.025 & cumsum(unif.post.i/npoints)<0.975] 
+cred_range_unif.post <- unif.post.i[cumsum(unif.post.i/npoints)>0.025 & cumsum(unif.post.i/npoints)<0.975] 
+
+cred_range_beta10 <- p[cumsum(beta10.post.i/npoints)>0.025 & cumsum(beta10.post.i/npoints)<0.975] 
+cred_range_beta10.post <- beta10.post.i[cumsum(beta10.post.i/npoints)>0.025 & cumsum(beta10.post.i/npoints)<0.975] 
+
+# PLOT
+ggplot()+
+  geom_line(aes(x=p, y=unif.post.i), size=0.7, color='steelblue')+
+  geom_area(aes(x=cred_range_unif, y=cred_range_unif.post),  fill='lightblue', color='steelblue', size=0.7)+
+  labs(
+    title='Final posterior with uniform prior, sequential analysis', 
+    x='p', 
+    y=TeX('$P(p|r,n, M)$')
+  )+
+  ylim(0, 6)+
+  geom_vline(xintercept=tail(unif.x1, 1), linetype='dashed', size=0.6)+
+  geom_vline(xintercept=tail(unif.x2, 1), linetype='dashed', size=0.6)+
+  geom_vline(xintercept=tail(unif.mode, 1), linetype='dashed', size=0.6, color='firebrick')+
+  annotate('text', x =tail(unif.x1, 1)-0.06, y = 5.2, label=paste('x1=', round(tail(unif.x1, 1), 2), sep=''))+
+  annotate('text', x =tail(unif.x2, 1)+0.06, y = 5.2, label=paste('x2=', round(tail(unif.x2, 1), 2), sep=''))+
+  annotate('text', x =0.5+0.045, y = 6, label='mode', color='firebrick')+
+  theme_bw()
+
+ggplot()+
+  geom_line(aes(x=p, y=beta10.post.i), size=0.7, color='steelblue')+
+  geom_area(aes(x=cred_range_beta10, y=cred_range_beta10.post),  fill='lightblue', color='steelblue', size=0.7)+
+  labs(
+    title='Final posterior with beta(10, 10) prior, sequential analysis', 
+    x='p', 
+    y=TeX('$P(p|r,n, M)$')
+  )+
+  ylim(0, 6)+
+  geom_vline(xintercept=tail(beta10.x1, 1), linetype='dashed', size=0.6)+
+  geom_vline(xintercept=tail(beta10.x2, 1), linetype='dashed', size=0.6)+
+  geom_vline(xintercept=tail(beta10.mode, 1), linetype='dashed', size=0.6, color='firebrick')+
+  annotate('text', x =tail(beta10.x1, 1)-0.06, y = 5.2, label=paste('x1=', round(tail(beta10.x1, 1), 2), sep=''))+
+  annotate('text', x =tail(beta10.x2, 1)+0.06, y = 5.2, label=paste('x2=', round(tail(beta10.x2, 1), 2), sep=''))+
+  annotate('text', x =0.5+0.045, y = 6, label='mode', color='firebrick')+
+  theme_bw()
+
+```
+
+
+```{r, fig.height=7, fig.width=18}
+
+gg_coin_unif <- ggplot()+
+  geom_ribbon(aes(x=1:30, ymin=unif.x1, ymax=unif.x2), fill = "lightsteelblue", alpha=0.4) +
+  geom_line(aes(x=1:30, y = unif.mode, color='Mode'), size=1) + 
+  geom_line(aes(x=1:30, y = unif.x1, color='Credibility Bands'), size=1) + 
+  geom_line(aes(x=1:30, y = unif.x2, color='Credibility Bands'), size=1) + 
+  labs(
+    title = 'Uniform prior', 
+    x='Iteration step', 
+    y='p'
+  )+
+  xlim(1, 30)+
+  ylim(0, 1)+
+  scale_colour_manual("",values=c("Mode"="navyblue", "Credibility Bands"="steelblue"))+
+  theme(plot.title  = element_text(size=20, hjust = 0.5), 
+          axis.text   = element_text(size=18),
+          axis.title  = element_text(size=18), 
+          legend.text = element_text(size=16))
+  
+gg_coin_beta10 <- ggplot()+
+  geom_ribbon(aes(x=1:30, ymin=beta10.x1, ymax=beta10.x2), fill = "lightgoldenrod", alpha=0.4) +
+  geom_line(aes(x=1:30, y = beta10.mode, color='Mode'), size=1) + 
+  geom_line(aes(x=1:30, y = beta10.x1, color='Credibility Bands'), size=1) + 
+  geom_line(aes(x=1:30, y = beta10.x2, color='Credibility Bands'), size=1) +  
+  labs(
+    title = 'Beta(10, 10) prior', 
+    x='Iteration step', 
+    y='p'
+  )+
+  xlim(1, 30)+
+  ylim(0, 1)+
+  scale_colour_manual("",values=c("Mode"="firebrick", "Credibility Bands"="darkorange"))+
+  theme(plot.title  = element_text(size=20, hjust = 0.5), 
+          axis.text   = element_text(size=18),
+          axis.title  = element_text(size=18), 
+          legend.text = element_text(size=16))
+
+(gg_coin_unif+gg_coin_beta10) +
+  plot_annotation(
+    title = 'Coin tossing, sequential analysis',
+    subtitle = 'Filled bands correspond to the 95% credibility interval',
+    theme = theme(plot.title = element_text(size = 24, hjust = 0.5),
+                  plot.subtitle = element_text(size = 20, hjust = 0.5),
+                  plot.caption = element_text(size = 14))
+  )
 
 ```
 
 ### d) Do you get a different result, by analyzing the data sequentially with respect to a one-step analysis (i.e. considering all the data as a whole)?
-
-```{r}
-
-```
+No, as expected I get exactly the same results. 
 
 
 
