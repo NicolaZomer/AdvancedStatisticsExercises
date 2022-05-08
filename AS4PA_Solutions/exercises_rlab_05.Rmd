@@ -31,37 +31,209 @@ options(highcharter.theme = hc_theme_elementary())
 ```
 
 # Exercise 1
-The number of particles emitted by a radioactive source during a fixed interval of time ($\Delta t=10s$) follows a Poisson distribution on the parameter $\mu$. The number of particles observed during
-consecutive time intervals is: 4, 1, 3, 1 and 3. 
+The number of particles emitted by a radioactive source during a fixed interval of time ($\Delta t=10s$) follows a Poisson distribution on the parameter $\mu$. The number of particles observed during consecutive time intervals is: 4, 1, 3, 1 and 3. 
 
 ### a) Suppose a uniform prior distribution for the parameter $\mu$
-* Determine and draw the posterior distribution for $\mu$, given the data
+#### Determine and draw the posterior distribution for $\mu$, given the data
+
+Assuming a uniform prior, the posterior is simply proportional to the likelihood. Being a Poisson process, the posterior then is a $Gamma(\alpha, \lambda)$, where $\alpha = \sum_{j=1}^{n} y_j+1$ and $\lambda=n$.
 
 ```{r}
 
+mu <- seq(0, 10, length=1000)
+
+n.particles <- c(4, 1, 3, 1, 3)
+n <- length(n.particles)
+
+unif.shape <- sum(n.particles+1)
+unif.rate <- n
+unif.posterior <- dgamma(mu, shape=unif.shape , rate=unif.rate)
+
+ggplot()+
+  geom_line(aes(x=mu, y=unif.posterior), color='steelblue', size=0.7)+
+  labs(
+    title = 'Posterior distribution, positive uniform prior',
+    x = TeX('$\\mu$'), 
+    y = TeX('$P(\\mu|\\{y_i\\})$')
+  )+
+  theme_bw()
+
 ```
 
-* Evaluate mean, median and variance, both analytically and numerically in R
+#### Evaluate mean, median and variance, both analytically and numerically in R
+
+The median can not be computed analytically, as there is not a simple closed form expression for it. 
 
 ```{r}
 
+gamma.mean.analytically <- function(shape, rate){
+  return(shape/rate)
+}
+gamma.variance.analytically <- function(shape, rate){
+  return(shape/rate^2)
+}
+gamma.mode.analytically <- function(shape, rate){
+  return((shape-1)/rate)
+}
+gamma.mode.numerically <- function(param, distr.data){
+  argmax <- function(x){
+    max.x <- max(x)
+    found <- FALSE
+    
+    i <- 1
+    while (!found & i<=length(x)){
+      if (x[i]==max.x){
+        found <- TRUE
+        return(i)
+      }
+      i <- i+1
+    }
+  }
+  return(param[argmax(distr.data)])
+}
+gamma.median.numerically <- function(shape, rate){
+  return(qgamma(0.5, shape=shape, rate=rate))
+}
+gamma.mean.numerically <- function(shape, rate, upp.bound=30){
+  return(integrate(function(x){dgamma(x, shape=shape, rate=rate)*x}, 0, upp.bound)$value)
+}
+gamma.variance.numerically <- function(shape, rate, upp.bound=30){
+  k2 <- integrate(function(x){dgamma(x, shape=shape, rate=rate)*(x^2)}, 0, upp.bound)$value
+  k1 <- gamma.mean.numerically(shape, rate, upp.bound)
+  
+  return(k2-k1^2)
+}
+
 ```
+
+
+```{r}
+
+glue('Median, computed numerically: mu={format(gamma.median.numerically(unif.shape, unif.rate), digits=4)}')
+
+df <- data.frame(row.names=c('Analytically', 'Numerically'))
+
+df['Mean'] = c(gamma.mean.analytically(unif.shape, unif.rate), gamma.mean.numerically(unif.shape, unif.rate))
+df['Variance'] = c(gamma.variance.analytically(unif.shape, unif.rate), gamma.variance.numerically(unif.shape, unif.rate))
+df['Mode'] = c(gamma.mode.analytically(unif.shape, unif.rate), gamma.mode.numerically(mu, unif.posterior))
+
+df %>% 
+  kable(digits=3, caption='Posterior statistics, with uniform prior') %>%
+  kable_classic(full_width=FALSE)
+
+unif.mean <- gamma.mean.analytically(unif.shape, unif.rate)
+unif.mode <- gamma.mode.analytically(unif.shape, unif.rate)
+unif.std <- sqrt(gamma.variance.analytically(unif.shape, unif.rate))
+
+```
+
 
 ### b) Suppose a Jeffrey's prior for the parameter $\mu$
-* Determine and draw the posterior distribution for $\mu$, given the data
+#### Determine and draw the posterior distribution for $\mu$, given the data
 
 ```{r}
+
+jeffrey.shape <- sum(n.particles+1/2)
+jeffrey.rate <- n
+jeffrey.posterior <- dgamma(mu, shape=jeffrey.shape, rate=jeffrey.rate)
+
+ggplot()+
+  geom_line(aes(x=mu, y=jeffrey.posterior), color='steelblue', size=0.7)+
+  labs(
+    title = 'Posterior distribution with Jeffrey’s prior',
+    x = TeX('$\\mu$'), 
+    y = TeX('$P(\\mu|\\{y_i\\})$')
+  )+
+  theme_bw()
 
 ```
 
-* Evaluate mean, median and variance, both analytically and numerically in R
+#### Evaluate mean, median and variance, both analytically and numerically in R
 
 ```{r}
+
+glue('Median, computed numerically: mu={format(gamma.median.numerically(unif.shape, unif.rate), digits=4)}')
+
+df <- data.frame(row.names=c('Analytically', 'Numerically'))
+
+df['Mean'] = c(gamma.mean.analytically(jeffrey.shape, jeffrey.rate), gamma.mean.numerically(jeffrey.shape, jeffrey.rate))
+df['Variance'] = c(gamma.variance.analytically(jeffrey.shape, jeffrey.rate), gamma.variance.numerically(jeffrey.shape, jeffrey.rate))
+df['Mode'] = c(gamma.mode.analytically(jeffrey.shape, jeffrey.rate), gamma.mode.numerically(mu, jeffrey.posterior))
+
+df %>% 
+  kable(digits=3, caption="Posterior statistics, with Jeffrey's prior") %>%
+  kable_classic(full_width=FALSE)
+
+jeffrey.mean <- gamma.mean.analytically(jeffrey.shape, jeffrey.rate)
+jeffrey.mode <- gamma.mode.analytically(jeffrey.shape, jeffrey.rate)
+jeffrey.std <- sqrt(gamma.variance.analytically(jeffrey.shape, jeffrey.rate))
 
 ```
 
 ### c) Evaluate a 95% credibility interval for the results obtained with both priors
 Compare the result with that obtained using a normal approximation for the posterior distribution, with the same mean and standard deviation.
+
+```{r}
+
+unif.cred.int <- c(qgamma(0.025, unif.shape, unif.rate), qgamma(0.975, unif.shape, unif.rate))
+jeffrey.cred.int <- c(qgamma(0.025, jeffrey.shape, jeffrey.rate), qgamma(0.975, jeffrey.shape, jeffrey.rate))
+
+gg_post_complete <- function(post.funct, limits, mode, Title='Posterior'){
+  mu <- seq(0, 10, length=1000)
+  mu95 <- seq(limits[1], limits[2], length=1000)
+    
+  ggplot()+
+    geom_line(aes(x=mu, y=post.funct(mu)), size=0.7, color='steelblue')+
+    geom_area(aes(x=mu95, y=post.funct(mu95)), fill='lightblue', color='steelblue', size=0.7)+
+    labs(
+      title=Title, 
+      x=TeX('$\\mu$'), 
+      y=TeX('$P(\\mu|\\{y_i\\})$')
+    )+
+    ylim(0, 0.6)+
+    geom_vline(xintercept=limits, linetype='dashed', size=0.6)+
+    geom_vline(xintercept=mode, linetype='dashed', size=0.6, color='firebrick')+
+    annotate('text', x=limits[1]-0.6, y=0.55, label=paste('x1=', format(limits[1], digits=2, nsmall=2), sep=''))+
+    annotate('text', x=limits[2]+0.6, y=0.55, label=paste('x2=', format(limits[2], digits=2, nsmall=2), sep=''))+
+    annotate('text', x=mode+0.4, y = 0.58, label=paste(format(round(mode, 2), nsmall = 2), sep=''), color='firebrick')+
+    theme_bw()
+}
+
+df <- data.frame(row.names=c('Uniform prior', "Jeffrey's prior"))
+df['Lower bound']=c(unif.cred.int[1], jeffrey.cred.int[1])
+df['Upper bound']=c(unif.cred.int[2], jeffrey.cred.int[2])
+
+df %>%
+  kable(caption='95% credibility interval', digits=3) %>%
+  kable_classic("striped", full_width = F)
+
+gg_post_complete(function(x){dgamma(x, shape=unif.shape , rate=unif.rate)}, unif.cred.int, unif.mode, Title='Posterior distribution, positive uniform prior')
+gg_post_complete(function(x){dgamma(x, shape=jeffrey.shape , rate=jeffrey.rate)}, jeffrey.cred.int, jeffrey.mode, Title="Posterior distribution, Jeffrey's prior")
+
+```
+
+Using the normal approximation:
+
+```{r}
+
+gg_post_complete(function(x){dnorm(x, mean=unif.mean, sd=unif.std)}, 
+                 c(qnorm(0.025, mean=unif.mean, sd=unif.std), qnorm(0.975, mean=unif.mean, sd=unif.std)),
+                 unif.mean, 
+                 Title='Posterior distribution using the normal approx')+
+  labs(subtitle='Mean and std from the posterior with the uniform prior')
+                 
+
+gg_post_complete(function(x){dnorm(x, mean=jeffrey.mean, sd=jeffrey.std)}, 
+                 c(qnorm(0.025, mean=jeffrey.mean, sd=jeffrey.std), qnorm(0.975, mean=jeffrey.mean, sd=jeffrey.std)),
+                 jeffrey.mean, 
+                 Title='Posterior distribution using the normal approx')+
+  labs(subtitle="Mean and std from the posterior with the Jeffrey's prior")
+
+```
+
+Using the normal approximation we obtain very similar results. For example, with the positive uniform prior, the mode and the mean of the posterior distribution are, respectively, 3.2 and 3.4, while using the normal approximation, we obtain a mode and a mean of 3.4. Similarly, also the credibility intervals are almost the same. This is true also when considering the Jeffrey's prior. 
+
+Notice that this results derive from the Central Limit Theorem, that in this case can be applied even if the number of measurements is quite small (5).
 
 # Exercise 2
 Given the problem of the lighthouse discussed last week, study the case in which both the position along the shore ($\alpha$) and the distance out at sea ($\beta$) are unknown. 
