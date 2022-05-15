@@ -65,19 +65,19 @@ ggplot()+
 The median can not be computed analytically, as there is not a simple closed form expression for it. 
 
 ```{r}
-argmax <- function(x){
-    max.x <- max(x)
-    found <- FALSE
-    
-    i <- 1
-    while (!found & i<=length(x)){
-      if (x[i]==max.x){
-        found <- TRUE
-        return(i)
-      }
-      i <- i+1
-    }
-  }
+# argmax <- function(x){
+#     max.x <- max(x)
+#     found <- FALSE
+#     
+#     i <- 1
+#     while (!found & i<=length(x)){
+#       if (x[i]==max.x){
+#         found <- TRUE
+#         return(i)
+#       }
+#       i <- i+1
+#     }
+#   }
 
 gamma.mean.analytically <- function(shape, rate){
   return(shape/rate)
@@ -89,7 +89,7 @@ gamma.mode.analytically <- function(shape, rate){
   return((shape-1)/rate)
 }
 gamma.mode.numerically <- function(param, distr.data){
-  return(param[argmax(distr.data)])
+  return(param[which.max(distr.data)])
 }
 gamma.median.numerically <- function(shape, rate){
   return(qgamma(0.5, shape=shape, rate=rate))
@@ -240,7 +240,288 @@ Given the problem of the lighthouse discussed last week, study the case in which
 
 ![](images/lighthouse.png)
 
+### Description of the problem
+The lighthouse emits a series of short highly collimated flashes at random intervals and at random angles. We detect the pulses on the coast using photo-detectors; they record only the position $x_k$ of the flash arrival on the coast, but not the angle of emission. Given the recording of $N$ flashes at positions $\{x_k\}$, we want to estimate the position of the lighthouse.
+
+### Solution
+I assign a uniform likelihood pdf on the azimuth angle $\theta_k$
+$$
+P(\theta_k|\alpha, \beta) = \frac{1}{\pi}
+$$
+Since $\theta_k$ is connected to $\alpha$ and $\beta$ by the relation 
+$$
+x_k-\alpha = \beta\tan{\theta_k}
+$$
+I can operate a change of variable $\theta_k\rightarrow x_k$ on the pdf and I get 
+$$
+P(x|\alpha, \beta)=P(\theta|\alpha, \beta)\left\rvert\frac{d\theta}{dx}\right\rvert = 
+\frac{1}{\pi}\frac{\beta}{\beta^2+(x-\alpha)^2}
+$$
+which is a Cauchy distribution, with maximum in $\alpha$ and FWHM of $2\beta$. I can then apply the Bayes theorem, where I call $D$ the set of measures $\{x_k\}$
+$$
+P(\alpha, \beta|D) \propto P(D|\alpha, \beta)\cdot P(\alpha, \beta)
+$$
+Regarding the prior, I assume that $\alpha$ is in a range $[\alpha_{min}, \alpha_{max}]$, while $\beta$ can take any non-negative value. Without having further information, then I assume a uniform distribution subject to these constraints
+
+$$
+P(\alpha, \beta) = 
+\begin{cases}
+  1 & \alpha\in[\alpha_{min}, \alpha_{max}], \; \beta\geq 0\\
+  0 & \text{otherwise}
+\end{cases}
+$$
+Notice that this is an improper prior, since the integral over all the possible values of the parameters diverges, and that the same considerations hold if an upper bound is imposed on $\beta$. As the recording of a signal at one photo-detector does not influence what we can infer about the position of another measurement (independent events), then the (unnormalized) Likelihood function is just the product of the probabilities of $N$ individual detections
+$$
+P(D|\alpha, \beta) = \prod P(x_j|\alpha, \beta) = \prod \frac{\beta}{\beta^2+(x_j-\alpha)^2}
+$$
+Finally, the posterior distribution is proportional to the likelihood, with the above constraints on $\alpha$ and $\beta$
+$$
+P(\alpha, \beta|D) = 
+\begin{cases}
+  \frac{1}{Z_{\alpha, \beta}}\prod \frac{\beta}{\beta^2+(x_j-\alpha)^2} & \text{if} \;\; \alpha\in[\alpha_{min}, \alpha_{max}], \; \beta\geq 0\\
+  0 & \text{otherwise}
+\end{cases}
+$$
+where $Z_{\alpha, \beta}$ is the normalization factor. It is possible to take the natural logarithm of the posterior
+$$
+L=\ln{P(\alpha, \beta|D)} = \text{const} + \sum \left[\ln\beta - \ln{(\beta^2+(x_j-\alpha)^2)}\right] = \text{const} - \sum\ln\left[\beta+\frac{(x_j-\alpha)^2}{\beta}\right]
+$$
+The best estimate $\alpha_0$, $\beta_0$ of the parameters is given by the maximum of the two-dimensional posterior pdf
+
+$$
+\begin{aligned}
+&\overrightarrow{\nabla}_{\alpha, \beta}L\biggr|_{\alpha_0, \beta_0} = 0 \\
+
+\Rightarrow \; &\begin{cases}
+  \frac{dL}{d\alpha}\biggr|_{\alpha_0, \beta_0} &= 2 \sum_{j}\frac{\beta_0(x_j-\alpha_0)}{\beta_0^2+(x_j-\alpha_0)^2}=0 \\
+  \frac{dL}{d\beta}\biggr|_{\alpha_0, \beta_0} &= \sum_{j}\left[\frac{1}{\beta_0}\cdot\frac{(x_j-\alpha_0)^2-\beta_0^2}{\beta_0^2+(x_j-\alpha_0)^2}\right] =0
+\end{cases}
+
+\end{aligned}
+$$
+and it can be evaluated numerically. 
+
+### Data generation
+I sample the data in the interval $x\in[−2 km,+2 km]$, using a uniform distribution and I assume the maximum number of collected data to be $100$. This is the maximum number in the sense that I will repeat the study for different values of $n$, the number of collected data, and in particular I will consider $n={1, 2, 5, 10, 20, 50, 100}$. 
+
 ```{r}
+
+set.seed(205)
+x.data <- runif(100, -2, 2)
+
+ggplot()+
+  geom_histogram(aes(x.data), breaks=seq(-2, 2, length=20), fill='steelblue', position = "identity", color='white')+
+  labs(
+    x='x', 
+    y='Count', 
+    title='Generated data',
+    subtitle='Position of the flash arrival on the coast'
+  )+
+  scale_x_continuous(breaks=seq(-2, 2, length=9))+
+  theme_bw()
+
+```
+
+
+### Posterior distribution 
+
+```{r, fig.height=10, fig.width=15}
+
+p.log.like.scalar <- function(a, b, data){
+  # data is vector
+  # a, b are scalar
+  
+  logL <- 0.0
+  for (x in data) {
+    logL <- logL - log(b + (x-a)^2/b)
+  }
+  return(logL)
+}
+p.log.like.vect <- function(a.vec, b.vec, data){
+  # data is a vector
+  # a, b are also vectors
+  
+  df <- expand.grid(alpha=a.vec, beta=b.vec)
+  
+  z <- numeric(nrow(df))
+
+  for (i in 1:nrow(df)){
+     z[i]<- p.log.like.scalar(df$alpha[i], df$beta[i], data)
+  }
+  df['loglike'] <- z
+  
+  return(df)
+}
+
+n.values = c(1, 2, 5, 10, 20, 50, 100)
+n.length = length(n.values)
+
+# define the grid of the parameters, according to the constraints
+n.samples.x <- 300
+n.samples.beta <- 300
+x.min <- -6
+x.max <- +6
+beta.max <- 4
+
+delta.alpha <- (x.max-x.min)/n.samples.x
+delta.beta  <- beta.max*(n.samples.beta-1)/(n.samples.beta^2)
+
+alpha <- seq(from=x.min, to=x.max, length=n.samples.x)
+beta <- seq(from=beta.max/n.samples.beta, to=beta.max, length=n.samples.beta)
+
+# function for computing 2d posterior and inferring the parameters
+inference.a.b <- function(ndata){
+
+  x.data.i <- x.data[1:ndata]
+  df_loglike <- p.log.like.vect(alpha, beta, x.data.i)
+  
+  # find the maximum
+  index.max <- which.max(df_loglike$loglike)
+  alpha.max <- df_loglike$alpha[index.max]
+  beta.max  <- df_loglike$beta[index.max]
+  
+  return(list(df = df_loglike, alpha=alpha.max, beta=beta.max))
+}
+
+
+# initialize objects
+df_infer <- data.frame(N=n.values)
+loglike_list <- vector(mode="list", length=n.length)
+alpha.s <- numeric(n.length)
+beta.s  <- numeric(n.length)
+
+for (i in 1:n.length){
+  res <- inference.a.b(n.values[i])
+  loglike_list[[i]] <- res$df
+
+  alpha.s[i] <- res$alpha
+  beta.s[i]  <- res$beta
+}
+
+df_infer['alpha.max'] <- alpha.s
+df_infer['beta.max']  <- beta.s
+
+df_infer %>%
+    kable(digits=3, caption="Estimate of alpha and beta") %>%
+    kable_classic(full_width=FALSE)
+
+
+# plot unnormalized 2D posterior as contours
+gg_2d_post <- function(df, title){
+  ggplot(df, aes(alpha, beta, z=loglike))+
+  geom_contour(bins=10, color='navyblue', size=0.7)+
+  geom_text_contour(stroke = 0.2, rotate=F)+
+  labs(
+    x=TeX('$\\alpha$'),
+    y=TeX('$\\beta$'), 
+    title=title
+  )+
+  theme_bw()+
+  theme(axis.text   = element_text(size=14),
+        axis.title  = element_text(size=14), 
+        plot.title  = element_text(size=16, hjust=0.5))
+}
+
+for (i in 1:n.length){
+  gg_tmp <- gg_2d_post(loglike_list[[i]], title=paste('N=', n.values[i], sep=''))
+  
+  if (i==1) plot_2d_post <- gg_tmp
+  else plot_2d_post <- plot_2d_post + gg_tmp
+}
+
+plot_2d_post +
+  plot_annotation(
+    title='Unnormalized 2D posterior as a function of the number of samples', 
+    theme = theme(plot.title = element_text(size = 20, hjust = 0.5))
+    )
+
+```
+
+So far I have found the two parameters unnormalized posterior density function. To find the posterior only for one parameter, I have to marginalize over the other
+$$
+\begin{aligned}
+P(\alpha|\beta, D) &= \int P(\alpha, \beta | D)d\beta = \frac{1}{Z_{\alpha, \beta}} \int_0^{\beta_{max}} P(D|\alpha, \beta)P(\alpha, \beta)d\beta \\
+P(\beta|\alpha, D) &= \int P(\alpha, \beta | D)d\alpha = \frac{1}{Z_{\alpha, \beta}} \int_{\alpha_{min}}^{\alpha_{max}} P(D|\alpha, \beta)P(\alpha, \beta)d\alpha
+\end{aligned}
+$$
+Numerically, the marginalization is performed on the grid of the parameters, simply by summing over one them 
+$$
+\begin{aligned}
+P(\alpha_j| D) &\simeq \Delta\beta \sum_{k=1}^{N_\beta}P(\alpha_j, \beta_k |D) \\
+P(\beta_j| D) &\simeq \Delta\alpha \sum_{k=1}^{N_\alpha}P(\alpha_k, \beta_j |D) 
+\end{aligned}
+$$
+and finally the posterior is normalized using the rectangle rule over the grid. 
+
+```{r}
+bb = 2
+TeX(paste('$\\langle {x_k} \\rangle$=', 2, sep=''))
+
+```
+
+```{r, fig.height=25, fig.width=15, warning=FALSE}
+
+gg_marg <- function(df, ndata, param.label, y.label, title, alpha=TRUE){
+  x.data.i <- x.data[1:ndata]
+  
+  ggplot() + 
+    geom_line(aes(x=df$x, y=df$y), size=0.7, color='navyblue')+
+    {if (alpha) geom_vline(xintercept=mean(x.data.i), size=0.7, linetype='dashed')}+
+    {if (alpha) geom_point(aes(x=x.data.i, y=rep(-0.1, length(x.data.i))), size=2.5, shape=21, fill='white', color='darkorange2', stroke=1.5)}+
+    {if (alpha) annotate('text', x=mean(x.data.i)+1.2, y=max(df$y)+0.06, label=TeX(paste('$mean(x)$=', round(mean(x.data.i), 2), sep='')))}+
+    labs(
+      x=param.label,
+      y=y.label,
+      title=title
+    )+
+    ylim(c(-0.1, max(df$y)+0.1))+
+    theme_bw()+
+    theme(axis.text   = element_text(size=14),
+        axis.title  = element_text(size=14), 
+        plot.title  = element_text(size=16, hjust=0.5))
+}
+
+gg_marg_post <- function(df_loglike, N){
+  
+  df_marg_a <- df_loglike %>%
+  group_by(alpha)%>%
+  summarize(
+    p_a_D = sum(exp(loglike))
+  )
+
+  df_marg_b <- df_loglike %>%
+    group_by(beta)%>%
+    summarize(
+      p_b_D = sum(exp(loglike))
+    )
+  
+  df_marg_a$p_a_D <- df_marg_a$p_a_D/(delta.alpha*sum(df_marg_a$p_a_D))
+  df_marg_b$p_b_D <- df_marg_b$p_b_D/(delta.beta*sum(df_marg_b$p_b_D)) 
+  
+  df_marg_a <- df_marg_a %>% rename(x=alpha, y=p_a_D)
+  df_marg_b <- df_marg_b %>% rename(x=beta, y=p_b_D)
+  
+  return(list(
+    gg.a = gg_marg(df_marg_a, N, TeX('$\\alpha$'), TeX('P($\\alpha$|D)'), paste('N=', N, sep='')), 
+    gg.b = gg_marg(df_marg_b, N, TeX('$\\beta$'),  TeX('P($\\beta$|D)'),  paste('N=', N, sep=''), alpha=F)
+    )
+  )
+}
+
+for (i in 1:n.length){
+  gg_tmp <- gg_marg_post(loglike_list[[i]], n.values[i])
+  
+  if (i==1) plot_marg <- (gg_tmp$gg.a+gg_tmp$gg.b)
+  else plot_marg <- plot_marg / (gg_tmp$gg.a+gg_tmp$gg.b)
+}
+
+# plot of the 1D marginalized posteriors
+plot_marg +
+  plot_annotation(
+    title='Marginalized posterior distributions', 
+    theme = theme(plot.title = element_text(size = 20, hjust = 0.5))
+    )
+
 
 ```
 
@@ -249,9 +530,9 @@ Given the problem of the lighthouse discussed last week, study the case in which
 Given the Signal over Background example discussed last week, analyze and discuss the following cases:
 
 * **a)** Vary the sampling resolution used to generate the data, keeping the same sampling range `xdat <- seq(from=-7*w, to=7*w, by=0.5*w)`
-  * change the resolution $w = {0.1,  0.25,  1,  2, 3}
+  * change the resolution $w = \{0.1,  0.25,  1,  2, 3\}$
   * check the effect on the results
-* **b)** Change the ratio A/B used to simulate the data (keeping both positive in accordance with the prior)
+* **b)** Change the ratio $A/B$ used to simulate the data (keeping both positive in accordance with the prior)
   * check the effect on the results
   
 Recall the signal shape is
@@ -297,7 +578,7 @@ signal <- R6Class("signal",
       plot.data = function(){
         if(is.null(self$ddat)) self$generate()
         
-        if(self$A/self$B>=1.5) xdat.off <- self$x-(self$x[argmax(self$ddat)]+self$x[argmax(self$ddat)+1])/2
+        if(self$A/self$B>=1.5) xdat.off <- self$x-(self$x[which.max(self$ddat)]+self$x[which.max(self$ddat)+1])/2
         else xdat.off <- self$x
         geom_step(aes(x=xdat.off, y=self$ddat), col='firebrick', size=0.7)
       }
@@ -619,7 +900,8 @@ marg.distributions+
 
 ```
 
-
+#### Results
+As expected, changing the resolution $w$, the shape of the signal and of the generated data remains the same. The unnormalized two-dimensional posterior also does not change, as well as the marginalized posterior distributions. The effect of $w$ can be understood by looking at the plot of the signal plus background counts: the only difference between the graphs is in the scale of the $x$ axis. This is also the reason why the mean value and the standard deviation of the estimated $A$ and $B$ remain the same for all $w$.
 
 ### b) Change the ratio A/B used to simulate the data (keeping both positive in accordance with the prior)
 In this point I keep $B$ constant and equal to 1. 
@@ -686,7 +968,7 @@ all_signals+
 ```{r, echo=TRUE, results='hide'}
 
 # Compute marginalized posteriors, plot them, get parameters values
-df_param <- data.frame('A/B'=ratios)
+df_param <- data.frame('A.B.ratio'=ratios)
 params <- matrix(nrow = length(ratios), ncol = 5)
 
 i <- 1
@@ -727,7 +1009,8 @@ marg.distributions+
 
 ```
 
-
+#### Results
+From the plot of the signal, it is possible to see that by varying the $A/B$ ratio, the relative amplitude between the signal and the background changes correctly. Regarding the unnormalized two-dimensional posterior, in all cases the maximum is close to the true values of the parameters. In the first 2 plots, I drew a vertical line to indicate the fact that $\alpha$ cannot be negative, so the posterior diverges to $-\infty$ over that line. The table with the estimated values of $A$ and $B$ (mean, standard deviations and $\rho$) supports the fact that the results are similarly accurate. Finally, the posterior marginalized distributions are again all very similar and obviously that of $A$ moves to the right as the value of the ratio increases.
 
 
 
