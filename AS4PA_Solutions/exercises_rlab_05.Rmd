@@ -287,16 +287,13 @@ $$
 L=\ln{P(\alpha, \beta|D)} = \text{const} + \sum \left[\ln\beta - \ln{(\beta^2+(x_j-\alpha)^2)}\right] = \text{const} - \sum\ln\left[\beta+\frac{(x_j-\alpha)^2}{\beta}\right]
 $$
 The best estimate $\alpha_0$, $\beta_0$ of the parameters is given by the maximum of the two-dimensional posterior pdf
-
 $$
 \begin{aligned}
 &\overrightarrow{\nabla}_{\alpha, \beta}L\biggr|_{\alpha_0, \beta_0} = 0 \\
-
 \Rightarrow \; &\begin{cases}
   \frac{dL}{d\alpha}\biggr|_{\alpha_0, \beta_0} &= 2 \sum_{j}\frac{\beta_0(x_j-\alpha_0)}{\beta_0^2+(x_j-\alpha_0)^2}=0 \\
   \frac{dL}{d\beta}\biggr|_{\alpha_0, \beta_0} &= \sum_{j}\left[\frac{1}{\beta_0}\cdot\frac{(x_j-\alpha_0)^2-\beta_0^2}{\beta_0^2+(x_j-\alpha_0)^2}\right] =0
 \end{cases}
-
 \end{aligned}
 $$
 and it can be evaluated numerically. 
@@ -452,12 +449,6 @@ P(\beta_j| D) &\simeq \Delta\alpha \sum_{k=1}^{N_\alpha}P(\alpha_k, \beta_j |D)
 \end{aligned}
 $$
 and finally the posterior is normalized using the rectangle rule over the grid. 
-
-```{r}
-bb = 2
-TeX(paste('$\\langle {x_k} \\rangle$=', 2, sep=''))
-
-```
 
 ```{r, fig.height=25, fig.width=15, warning=FALSE}
 
