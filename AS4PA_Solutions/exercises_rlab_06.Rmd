@@ -1,0 +1,107 @@
+---
+title: "Exercises Laboratory Session 06"
+author: "Nicola Zomer"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: default
+---
+
+```{r setup-chunk}
+knitr::opts_chunk$set(dev = "ragg_png")
+options(digits=5) # set number of digits equal to 5
+
+```
+
+# Packages and functions
+
+```{r, message=FALSE}
+
+# tidyverse
+library(tidyverse)
+
+# others
+library(gridExtra)
+library(kableExtra)
+library(glue)
+library(patchwork)
+library(latex2exp)
+library(metR)   # label contour plot
+
+```
+
+# Exercise 1
+A well established and diffused method for detecting a disease in blood fails to detect the presence of disease in 15% of the patients that actually have the disease. 
+A young UniPD startUp has developed an innovative method of screening. During the qualification phase, a random sample of n = 75 patients known to have the disease is screened using the new method.
+
+### (a) What is the probability distribution of y, the number of times the new method fails to detect the disease ?
+
+### (b) On the n=75 patients sample, the new method fails to detect the disease in y=6 cases. What is the frequentist estimator of the failure probability of the new method?
+
+### (c) Setup a bayesian computation of the posterior probability, assuming a beta distribution with mean value 0.15 and standard deviation 0.14. Plot the posterior distribution of the probability of y, and mark on the plot the mean value and variance.
+
+### (d) Perform a test of hypothesis assuming that if the probability of failing to the detect the desease in ill patients is greater or equal than 15%, the new test is no better that the traditional method. Test the sample at a 5% level of signifcance in the Bayesian way.
+
+### (e) Perform the same hypothesis test in the classical frequentist way.
+
+# Exercise 2
+Ladislaus Josephovich Bortkiewicz was a Russian economist and statistician. He noted that the Poisson distribution can be very useful in applied statistics when describing low-frequency events in a large population. In a famous example he showed that the number of deaths by horse kick among the Prussian army follows the Poisson distribution.
+
++-------------------+------+------+------+------+------+----------+
+| y death soldiers  | 0    | 1    | 2    | 3    | 4    | $\geq$ 5 |
++:=================:+:====:+:====:+:====:+:====:+:====:+:========:+
+| $n_1$ observations| 109  | 65   | 22   | 3    | 1    | 0        |
+|                   |      |      |      |      |      |          |
++-------------------+------+------+------+------+------+----------+
+| $n_2$ observations| 144  | 91   | 32   | 11   | 2    | 0        |
+|                   |      |      |      |      |      |          |
++-------------------+------+------+------+------+------+----------+
+
+### (a) 
+Assuming a uniform prior, compute and plot the posterior distribution for $\lambda$, the death rate over the measurement time. Determine the posterior mean, median and variance, and compute the 95% credibility interval.
+
+### (b)
+Assuming now a Jeffreys' prior,
+$$
+g(\lambda) \propto 1/\sqrt{\lambda}\quad , \quad \text{with } \lambda>0
+$$
+Compute and plot the posterior distribution for $\lambda$, the death rate over the measurement time. 
+Determine the posterior mean, median and variance, and compute the 95% credibility interval.
+
+# Exercise 3
+A study on water quality of streams, a high level of bacteria X was defined as a level greater than 100 per 100 ml of stream water. n = 116 samples were taken from streams having a high environmental impact on pandas. Out of these, y = 11 had a high bacteria X level.
+
+## Indicating with $p$ the probability that a sample of water taken from the stream has a high bacteria X level,
+
+### (a) find the frequentist estimator for _p_
+
+### (b) using a _Beta(1; 10)_ prior for _p_, calculate and posterior distribution _P(p|y)_
+
+### (c) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
+
+### (d) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach
+$$
+H_0: p=0.1 \text{ versus } H_1: p\neq 0.1
+$$
+
+## A new measurement, performed one month later on n = 165 water samples, gives y = 9 high bacteria X level
+
+### (e) find the frequentist estimator for _p_
+
+### (f) find a bayesian estimator for _p_, assuming both a _Beta(1; 10)_ prior for _p_, and assuming the posterior probability of the older measurement as the prior for the new one.
+
+### (g) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
+
+### (h) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach 
+$$
+H_0: p=0.1 \text{ versus } H_1: p\neq 0.1
+$$
+
+
+# Exercise 4
+Analyze the data of Exercise 1 using a MCMC with JAGS (solve only point a of Ex 1). 
+
+# Exercise 5
+Analyze the data of Exercise 2 using a MCMC with JAGS.
+
+# Exercise 6
+Analyze the data of Exercise 3 using a MCMC with JAGS (solve point b and c)

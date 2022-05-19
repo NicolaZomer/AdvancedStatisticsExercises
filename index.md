@@ -19,6 +19,11 @@ Below you can find all the exercises carried out during the course. To download 
   * Bayesian inference for a Poisson process
   * The Lighthouse problem
   * Signal over Background
+* [Exercises R Laboratory 06](./AS4PA_Solutions/exercises_rlab_06.html)
+  * Bayesian computation of the posterior probability
+  * Frequentist and Bayesian estimator
+  * Hypotesis Testing
+  * MCMC with JAGS
 
 # Statistical Mechanics of Complex Systems projects
 [Application of the MaxEnt Principle](./Complex_Systems_Projects/Application-of-the-MaxEnt-Principle.html) <br>
