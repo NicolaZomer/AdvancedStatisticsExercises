@@ -25,6 +25,7 @@ library(kableExtra)
 library(glue)
 library(patchwork)
 library(latex2exp)
+library(scales)
 library(metR)   # label contour plot
 
 ```
@@ -33,15 +34,168 @@ library(metR)   # label contour plot
 A well established and diffused method for detecting a disease in blood fails to detect the presence of disease in 15% of the patients that actually have the disease. 
 A young UniPD startUp has developed an innovative method of screening. During the qualification phase, a random sample of n = 75 patients known to have the disease is screened using the new method.
 
+I call $p_0=15\%$ the fraction of failures in detecting disease by the standard method.
+
 ### (a) What is the probability distribution of y, the number of times the new method fails to detect the disease ?
+The number of times $y$ the new method fails is distributed according to a binomial distribution with probability $p$
+$$
+P(y|p, n)=Binom(y|p, n)=\binom{n}{y}p^y(1-p)^{n-y}
+$$
+where $p$ is the probability of failing to the detect the disease with the new method.
 
 ### (b) On the n=75 patients sample, the new method fails to detect the disease in y=6 cases. What is the frequentist estimator of the failure probability of the new method?
+Since the number of failures follows the Binomial distribution, an unbiased frequentist estimator of the failure probability of the new method is
+$$
+\hat{p}_F = \frac{y}{n} = \frac{6}{75} = 0.08
+$$
 
-### (c) Setup a bayesian computation of the posterior probability, assuming a beta distribution with mean value 0.15 and standard deviation 0.14. Plot the posterior distribution of the probability of y, and mark on the plot the mean value and variance.
+### (c) Setup a bayesian computation of the posterior probability, assuming a beta distribution with mean value 0.15 and standard deviation 0.14. Plot the posterior distribution of _p_, and mark on the plot the mean value and variance.
 
-### (d) Perform a test of hypothesis assuming that if the probability of failing to the detect the desease in ill patients is greater or equal than 15%, the new test is no better that the traditional method. Test the sample at a 5% level of signifcance in the Bayesian way.
+>>> DA CONTROLLARE (risultati + plot variance)
+
+The prior is a Beta distribution with $m=0.15$ and $\sigma=0.14$. For a Beta distribution
+$$
+m=\frac{\alpha}{\alpha+\beta}\quad , \quad \sigma^2=\frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}
+$$
+so it is possible to compute $\alpha$ and $\beta$ given $m$ and $\sigma$
+$$
+\begin{align}
+\alpha&=-\frac{m(\sigma^2+m^2-m)}{\sigma^2} = 0.82 \\
+\beta&=\frac{(\sigma^2+m^2-m)(m-1)}{\sigma^2} = 4.68
+\end{align}
+$$
+Since the likelihood is Binomial and a Beta prior is a conjugate function for the Binomial distribution, then the posterior is also a Beta distribution with parameters
+$$
+\begin{align}
+\alpha'&=\alpha+y = \alpha + 6 = 6.83 \\
+\beta'&=\beta+n-y = \beta +75-6 = \beta+69 = 73.68
+\end{align}
+$$
+The mean value and the variance of the posterior are simply
+$$
+\begin{align}
+m&=\frac{\alpha'}{\alpha'+\beta'} = 0.0848\\
+\sigma^2&=\frac{\alpha'\beta'}{(\alpha'+\beta')^2(\alpha'+\beta'+1)} = 0.000952
+\end{align}
+$$
+
+```{r}
+
+xsize= 400
+x <- seq(0, 1, length=xsize)
+
+m <- 0.15
+sigma <- 0.14
+  
+alpha.prior <- -m*(sigma^2+m^2-m)/sigma^2
+beta.prior  <- (sigma^2+m^2-m)*(m-1)/sigma^2
+
+alpha.posterior <- alpha.prior + 6
+beta.posterior  <- beta.prior + 69
+
+m.posterior <- alpha.posterior/(alpha.posterior+beta.posterior)
+var.posterior <- (alpha.posterior*beta.posterior)/((alpha.posterior+beta.posterior)^2*(alpha.posterior+beta.posterior+1))
+
+glue(
+  'Posterior parameters:
+  - alpha = {round(alpha.posterior, 2)}
+  - beta  = {round(beta.posterior, 2)}\n
+  Mean value = {round(m.posterior, 4)}
+  Variance   = {round(var.posterior, 6)}'
+)
+
+ggplot()+
+  geom_line(aes(x, dbeta(x, alpha.posterior, beta.posterior)), color='navyblue', size=0.6)+
+  geom_vline(xintercept=m.posterior, color='firebrick', linetype='dashed')+
+  annotate('text', x=m.posterior+0.1, y=14, label=paste('mean=', round(m.posterior, 3), sep=''))+
+  labs(
+    x='p', 
+    y='P(p|y, n)', 
+    title=paste('Posterior probability, Beta(', round(alpha.posterior, 2), ', ', round(beta.posterior, 2), ')', sep='')
+  )+
+  xlim(0, 1)+
+  ylim(0, 15)+
+  theme_bw()
+
+
+```
+
+### (d) Perform a test of hypothesis assuming that if the probability of failing to the detect the desease in ill patients is greater or equal than 15%, the new test is no better that the traditional method. Test the sample at a 5% level of significance in the Bayesian way.
+
+The null-hypothesis is
+$$
+H_0: p\geq 15\%
+$$
+
+while the alternative hypothesis (the new method is better) is
+$$
+H_1: p<15\%
+$$
+The level of significance is chosen to be $\alpha=5\%$.
+
+Using the Bayesian approach, I can compute the posterior probability of $H_0$ by integrating the posterior $p$ over the required region:
+$$
+P(H_0: p\geq15\%) = \int_{0.15}^{1}f(p|y, n)dp = 1-F(p=0.15|y, n)
+$$
+where $F$ is the cumulative distribution of the posterior. 
+
+```{r}
+
+post.H0 <- 1-pbeta(0.15, alpha.posterior, beta.posterior)
+glue('Probability P(p>=0.15|y=6, n=75) = {round(post.H0, 4)} = {round(post.H0*100, 2)}%')
+  
+```
+The result is smaller than $\alpha=5\%$, therefore I reject the null hypothesis at the 5% level of significance. 
+
+```{r}
+
+x.area <- tail(x, round(xsize*(1-0.15), 0))
+
+ggplot()+
+  geom_line(aes(x, dbeta(x, alpha.posterior, beta.posterior)), color='navyblue', size=0.6)+
+  geom_area(aes(x.area, dbeta(x.area, alpha.posterior, beta.posterior)), fill='steelblue2', color='navyblue', alpha=0.5)+
+  geom_vline(xintercept=0.15, color='black', linetype='dashed')+
+  annotate('text', x=0.15+0.11, y=1.25, label=paste('Area=', round(post.H0, 4), sep=''))+
+  labs(
+    x='p',
+    y='P(p|y, n)',
+    title=paste('Posterior probability, Beta(', round(alpha.posterior, 2), ', ', round(beta.posterior, 2), ')', sep='')
+  )+
+  xlim(0, 1)+
+  ylim(0, 15)+
+  theme_bw()
+
+```
 
 ### (e) Perform the same hypothesis test in the classical frequentist way.
+The classical frequentist way is based on the Neyman and Pearson approach. The rejection region is chosen so that the distribution of the null hypothesis is under the significance level $\alpha$. 
+
+```{r}
+
+p0 <- 0.15
+y_ <- seq(0, 30)
+
+ggplot()+
+  geom_col(aes(x=y_, y=pbinom(y_, 75, p0)), color='white', fill='lightblue', alpha=1)+
+  geom_col(aes(x=6, y=pbinom(6, 75, p0)), color='white', fill='darkorange')+
+  geom_hline(yintercept=0.05, color='firebrick', linetype='dashed')+
+  annotate('text', x=1, y=0.08, label='alpha=0.05')+
+  labs(
+    x=TeX('$y$'), 
+    y=TeX('$P(y_{obs}\\leq y|p=0.15, n=75)$')
+  )+
+  theme_bw()
+
+```
+```{r}
+glue('Value in y=6: {round(pbinom(6, 75, p0), 4)}')
+
+```
+This is exactly the p-value, which indeed in this case (one-side hypothesis test) is given by
+$$
+p-value = \sum_{y=0}^{6} P(y|p_0, n)
+$$
+The p-value is larger than the significance level $\alpha=0.05$, so with the frequentist approach I do not reject the null hypothesis $H_0$. 
 
 # Exercise 2
 Ladislaus Josephovich Bortkiewicz was a Russian economist and statistician. He noted that the Poisson distribution can be very useful in applied statistics when describing low-frequency events in a large population. In a famous example he showed that the number of deaths by horse kick among the Prussian army follows the Poisson distribution.
@@ -70,38 +224,38 @@ Determine the posterior mean, median and variance, and compute the 95% credibili
 # Exercise 3
 A study on water quality of streams, a high level of bacteria X was defined as a level greater than 100 per 100 ml of stream water. n = 116 samples were taken from streams having a high environmental impact on pandas. Out of these, y = 11 had a high bacteria X level.
 
-## Indicating with $p$ the probability that a sample of water taken from the stream has a high bacteria X level,
+### Indicating with $p$ the probability that a sample of water taken from the stream has a high bacteria X level,
 
-### (a) find the frequentist estimator for _p_
+#### (a) find the frequentist estimator for _p_
 
-### (b) using a _Beta(1; 10)_ prior for _p_, calculate and posterior distribution _P(p|y)_
+#### (b) using a _Beta(1; 10)_ prior for _p_, calculate and posterior distribution _P(p|y)_
 
-### (c) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
+#### (c) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
 
-### (d) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach
+#### (d) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach
 $$
 H_0: p=0.1 \text{ versus } H_1: p\neq 0.1
 $$
 
-## A new measurement, performed one month later on n = 165 water samples, gives y = 9 high bacteria X level
+### A new measurement, performed one month later on n = 165 water samples, gives y = 9 high bacteria X level
 
-### (e) find the frequentist estimator for _p_
+#### (e) find the frequentist estimator for _p_
 
-### (f) find a bayesian estimator for _p_, assuming both a _Beta(1; 10)_ prior for _p_, and assuming the posterior probability of the older measurement as the prior for the new one.
+#### (f) find a bayesian estimator for _p_, assuming both a _Beta(1; 10)_ prior for _p_, and assuming the posterior probability of the older measurement as the prior for the new one.
 
-### (g) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
+#### (g) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
 
-### (h) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach 
+#### (h) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach 
 $$
 H_0: p=0.1 \text{ versus } H_1: p\neq 0.1
 $$
 
 
 # Exercise 4
-Analyze the data of Exercise 1 using a MCMC with JAGS (solve only point a of Ex 1). 
+Analyze the data of Exercise 1 using a MCMC with JAGS (solve only point c of Ex 1). 
 
 # Exercise 5
 Analyze the data of Exercise 2 using a MCMC with JAGS.
 
 # Exercise 6
-Analyze the data of Exercise 3 using a MCMC with JAGS (solve point b and c)
+Analyze the data of Exercise 3 using a MCMC with JAGS (solve points b and c).
