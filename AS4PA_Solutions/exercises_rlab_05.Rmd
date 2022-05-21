@@ -45,7 +45,7 @@ mu <- seq(0, 10, length=1000)
 n.particles <- c(4, 1, 3, 1, 3)
 n <- length(n.particles)
 
-unif.shape <- sum(n.particles+1)
+unif.shape <- sum(n.particles)+1
 unif.rate <- n
 unif.posterior <- dgamma(mu, shape=unif.shape , rate=unif.rate)
 
@@ -133,7 +133,7 @@ unif.std <- sqrt(gamma.variance.analytically(unif.shape, unif.rate))
 
 ```{r}
 
-jeffrey.shape <- sum(n.particles+1/2)
+jeffrey.shape <- sum(n.particles)+1/2
 jeffrey.rate <- n
 jeffrey.posterior <- dgamma(mu, shape=jeffrey.shape, rate=jeffrey.rate)
 
