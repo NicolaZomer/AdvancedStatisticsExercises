@@ -153,7 +153,7 @@ x.area <- tail(x, round(xsize*(1-0.15), 0))
 
 ggplot()+
   geom_line(aes(x, dbeta(x, alpha.posterior, beta.posterior)), color='navyblue', size=0.6)+
-  geom_area(aes(x.area, dbeta(x.area, alpha.posterior, beta.posterior)), fill='steelblue2', color='navyblue', alpha=0.5)+
+  geom_area(aes(x.area, dbeta(x.area, alpha.posterior, beta.posterior)), fill='steelblue2', color='navyblue', alpha=0.5, size=0.6)+
   geom_vline(xintercept=0.15, color='black', linetype='dashed')+
   annotate('text', x=0.15+0.11, y=1.25, label=paste('Area=', round(post.H0, 4), sep=''))+
   labs(
@@ -168,7 +168,7 @@ ggplot()+
 ```
 
 ### (e) Perform the same hypothesis test in the classical frequentist way.
-The classical frequentist way is based on the Neyman and Pearson approach. The rejection region is chosen so that the distribution of the null hypothesis is under the significance level $\alpha$. 
+The classical frequentist way is based on the Neyman and Pearson approach. The rejection region is chosen so that the distribution of the null hypothesis is under the significance level $\alpha$, where in this case the null distribution is $Binom(y|p=0.15, n=75)$.
 
 ```{r}
 
@@ -176,80 +176,476 @@ p0 <- 0.15
 y_ <- seq(0, 30)
 
 ggplot()+
-  geom_col(aes(x=y_, y=pbinom(y_, 75, p0)), color='white', fill='lightblue', alpha=1)+
-  geom_col(aes(x=6, y=pbinom(6, 75, p0)), color='white', fill='darkorange')+
-  geom_hline(yintercept=0.05, color='firebrick', linetype='dashed')+
-  annotate('text', x=1, y=0.08, label='alpha=0.05')+
+  geom_col(aes(x=y_, y=dbinom(y_, 75, p0)), color='white', fill='lightblue', alpha=1)+
+  geom_col(aes(x=6, y=dbinom(6, 75, p0)), color='white', fill='darkorange')+
+  geom_hline(yintercept=0.05, color='firebrick', linetype='dashed', size=0.6)+
+  annotate('text', x=1, y=0.055, label='alpha=0.05')+
   labs(
-    x=TeX('$y$'), 
-    y=TeX('$P(y_{obs}\\leq y|p=0.15, n=75)$')
+    x='y', 
+    y=paste('P(y|p=', p0, ', n=75)', sep=''),
+    title='Hypothesis Test', 
+    subtitle='Detecting disease in blood'
   )+
   theme_bw()
 
-```
-```{r}
-glue('Value in y=6: {round(pbinom(6, 75, p0), 4)}')
+glue('Value in y=6: {round(dbinom(6, 75, p0), 4)} < 0.05')
 
 ```
-This is exactly the p-value, which indeed in this case (one-side hypothesis test) is given by
+$y = 6$ lies in the acceptance region, so I do not reject the null hypothesis $H_0$.
+
+Instead, following Fisher's approach, to decide whether to accept or reject the null hypothesis, it is necessary to calculate the p-value, which in this case (one-side hypothesis test) is given by
 $$
-p-value = \sum_{y=0}^{6} P(y|p_0, n)
+\text{p-value} = \sum_{y=0}^{6} P(y|p_0, n) = \sum_{y=0}^{6} Binom(y|p_0, n)
 $$
-The p-value is larger than the significance level $\alpha=0.05$, so with the frequentist approach I do not reject the null hypothesis $H_0$. 
+
+```{r}
+glue('p-value: {round(pbinom(6, 75, p0), 4)}')
+
+```
+The p-value is larger than the significance level $\alpha=0.05$, so applying the frequentist approach in Fisher's way leads to not rejecting the null hypothesis $H_0$, unlike what I have found so far. Anyway, the result is still highly significant, as the p-value is very close to $\alpha$. 
 
 # Exercise 2
 Ladislaus Josephovich Bortkiewicz was a Russian economist and statistician. He noted that the Poisson distribution can be very useful in applied statistics when describing low-frequency events in a large population. In a famous example he showed that the number of deaths by horse kick among the Prussian army follows the Poisson distribution.
 
-+-------------------+------+------+------+------+------+----------+
-| y death soldiers  | 0    | 1    | 2    | 3    | 4    | $\geq$ 5 |
-+:=================:+:====:+:====:+:====:+:====:+:====:+:========:+
-| $n_1$ observations| 109  | 65   | 22   | 3    | 1    | 0        |
-|                   |      |      |      |      |      |          |
-+-------------------+------+------+------+------+------+----------+
-| $n_2$ observations| 144  | 91   | 32   | 11   | 2    | 0        |
-|                   |      |      |      |      |      |          |
-+-------------------+------+------+------+------+------+----------+
++--------------------+------+------+------+------+------+----------+
+| y death soldiers   | 0    | 1    | 2    | 3    | 4    | $\geq$ 5 |
++:==================:+:====:+:====:+:====:+:====:+:====:+:========:+
+| $n_1$ observations | 109  | 65   | 22   | 3    | 1    | 0        |
+|                    |      |      |      |      |      |          |
++--------------------+------+------+------+------+------+----------+
+| $n_2$ observations | 144  | 91   | 32   | 11   | 2    | 0        |
+|                    |      |      |      |      |      |          |
++--------------------+------+------+------+------+------+----------+
 
-### (a) 
-Assuming a uniform prior, compute and plot the posterior distribution for $\lambda$, the death rate over the measurement time. Determine the posterior mean, median and variance, and compute the 95% credibility interval.
+### (a) Assuming a uniform prior, compute and plot the posterior distribution for $\lambda$, the death rate over the measurement time. Determine the posterior mean, median and variance, and compute the 95% credibility interval.
 
-### (b)
-Assuming now a Jeffreys' prior,
+Assuming a uniform prior for a Poisson process, the posterior becomes a $Gamma(\alpha, \beta)$ function with shape $\alpha=\sum y_i + 1$ and rate $\beta=n$, the number of observations. In this case, we have 
+
+$$
+\begin{align}
+n &= \sum_{i=0}^4 \left[(n_1)_i + (n_2)_i\right] \\
+\sum y_i &= \sum_{i=0}^4 i\cdot\left[(n_1)_i + (n_2)_i\right] 
+\end{align}
+$$
+```{r}
+gamma.mean <- function(shape, rate){
+  return(shape/rate)
+}
+gamma.variance <- function(shape, rate){
+  return(shape/rate^2)
+}
+gamma.median <- function(shape, rate){
+  return(qgamma(0.5, shape=shape, rate=rate))
+}
+```
+
+```{r}
+
+df_horsekick <- data.frame(
+  y   = c(0, 1, 2, 3, 4, 5), 
+  n.1 = c(109, 65, 22, 3, 1, 0), 
+  n.2 = c(144, 91, 32, 11, 2, 0)
+)
+
+# df_horsekick %>% 
+#   kable() %>%
+#   kable_styling(full_width=FALSE)
+
+n <- sum(df_horsekick$n.1+df_horsekick$n.2)
+s.y <- sum((df_horsekick$n.1+df_horsekick$n.2)*df_horsekick$y)
+
+alpha.hk.unif <- s.y+1
+beta.hk <- n
+
+mean.hk.unif <- gamma.mean(alpha.hk.unif, beta.hk)
+variance.hk.unif <- gamma.variance(alpha.hk.unif, beta.hk)
+median.hk.unif <- gamma.median(alpha.hk.unif, beta.hk)
+cred.int.unif <- c(qgamma(0.025, shape=alpha.hk.unif, rate=beta.hk), qgamma(0.975, alpha.hk.unif, beta.hk))
+
+gg_post <- function(post.funct, limits, mean, median, Title='Posterior'){
+  lambda <- seq(0.25, 1.25, length=400)
+  lambda95 <- seq(limits[1], limits[2], length=400)
+    
+  ggplot()+
+    geom_line(aes(x=lambda, y=post.funct(lambda)), color='navyblue', size=0.6)+
+    geom_area(aes(x=lambda95, y=post.funct(lambda95)), fill='steelblue2', color='navyblue', size=0.6, alpha=0.5)+
+    labs(
+      title=Title, 
+      x=TeX('$\\lambda$'), 
+      y=TeX('$P(\\lambda|\\{y_i\\})$')
+    )+
+    scale_y_continuous(breaks=seq(0, 12, by=3), limits=c(0, 12))+
+    geom_vline(xintercept=limits, linetype='dashed', size=0.6)+
+    geom_vline(xintercept=mean, linetype='dashed', size=0.6, color='firebrick')+
+    annotate('text', x=limits[1]-0.1, y=9.75, label=paste('x1=', format(limits[1], digits=2, nsmall=2), sep=''))+
+    annotate('text', x=limits[2]+0.1, y=9.75, label=paste('x2=', format(limits[2], digits=2, nsmall=2), sep=''))+
+    annotate('text', x=mean+0.12, y = 11.25, label=paste('mean=', format(round(mean, 2), nsmall = 2), sep=''), color='firebrick')+
+    theme_bw()
+}
+
+gg_post(
+  function(x){dgamma(x, shape=alpha.hk.unif, rate=beta.hk)}, 
+  cred.int.unif, 
+  mean.hk.unif, 
+  median.hk.unif, 
+  Title='Posterior distribution, postive uniform prior'
+)
+
+```
+
+### (b) Assuming now a Jeffrey's prior, compute and plot the posterior distribution for $\lambda$, the death rate over the measurement time. Determine the posterior mean, median and variance, and compute the 95% credibility interval.
+Assuming a Jeffrey's prior
 $$
 g(\lambda) \propto 1/\sqrt{\lambda}\quad , \quad \text{with } \lambda>0
 $$
-Compute and plot the posterior distribution for $\lambda$, the death rate over the measurement time. 
-Determine the posterior mean, median and variance, and compute the 95% credibility interval.
+the posterior is again a $Gamma(\alpha, \beta)$ function and the only difference from the previous case is that now $\alpha=\sum y_i+1/2$.
+
+```{r}
+
+alpha.hk.jeffrey <- s.y+1/2
+
+mean.hk.jeffrey <- gamma.mean(alpha.hk.jeffrey, beta.hk)
+variance.hk.jeffrey <- gamma.variance(alpha.hk.jeffrey, beta.hk)
+median.hk.jeffrey <- gamma.median(alpha.hk.jeffrey, beta.hk)
+cred.int.jeffrey <- c(qgamma(0.025, shape=alpha.hk.jeffrey, rate=beta.hk), qgamma(0.975, alpha.hk.jeffrey, beta.hk))
+
+gg_post(
+  function(x){dgamma(x, shape=alpha.hk.jeffrey, rate=beta.hk)}, 
+  cred.int.jeffrey, 
+  mean.hk.jeffrey, 
+  median.hk.jeffrey, 
+  Title="Posterior distribution, Jeffrey's prior"
+)
+
+```
+
+Let's summarize the results. 
+
+```{r}
+
+df_ <- data.frame(row.names=c('Uniform', 'Jeffrey'))
+df_['mean'] = c(mean.hk.unif, mean.hk.jeffrey)
+df_['median'] = c(median.hk.unif, median.hk.jeffrey)
+df_['variance'] = c(variance.hk.unif, variance.hk.jeffrey)
+df_['Cred.Int.Low'] = c(cred.int.unif[1], cred.int.jeffrey[1])
+df_['Cred.Int.High'] = c(cred.int.unif[2], cred.int.jeffrey[2])
+
+df_ %>% 
+  kable(digits=6) %>%
+  kable_styling(full_width=FALSE)
+
+```
 
 # Exercise 3
-A study on water quality of streams, a high level of bacteria X was defined as a level greater than 100 per 100 ml of stream water. n = 116 samples were taken from streams having a high environmental impact on pandas. Out of these, y = 11 had a high bacteria X level.
+In a study on water quality of streams, a high level of bacteria X was defined as a level greater than 100 per 100 ml of stream water. n = 116 samples were taken from streams having a high environmental impact on pandas. Out of these, y = 11 had a high bacteria X level.
 
 ### Indicating with $p$ the probability that a sample of water taken from the stream has a high bacteria X level,
 
-#### (a) find the frequentist estimator for _p_
+### (a) find the frequentist estimator for _p_
+Since the sample of water either has or doesn't have a high bacteria X level, then $y$ follows a Binomial distribution. The frequentist estimator for the Binomial distribution is 
+$$
+\hat{p}_F = \frac{y}{n} = \frac{11}{116} \simeq 0.09483 
+$$
 
-#### (b) using a _Beta(1; 10)_ prior for _p_, calculate and posterior distribution _P(p|y)_
+### (b) using a _Beta(1; 10)_ prior for _p_, calculate and posterior distribution _P(p|y)_
+The Beta function is the conjugate prior for the Binomial distribution, so the posterior $P(p|y)$ is also a Beta distribution, with parameters 
+$$
+\begin{align}
+\alpha'&=\alpha+y = 1+11 = 12 \\
+\beta'&=\beta+n-y = 10+116-11 = 115
+\end{align}
+$$
 
-#### (c) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
+Let's plot the posterior.
+```{r}
 
-#### (d) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach
+alpha.water <- 12
+beta.water  <- 115
+
+xsize= 400
+x <- seq(0, 1, length=xsize)
+
+ggplot()+
+  geom_line(aes(x, dbeta(x, alpha.water, beta.water)), color='navyblue', size=0.6)+
+  labs(
+    x='p', 
+    y='P(p|y, n)', 
+    title=paste('Posterior probability, Beta(', alpha.water, ', ', beta.water, ')', sep='')
+  )+
+  xlim(0, 1)+
+  ylim(0, 16)+
+  theme_bw()
+
+```
+
+
+### (c) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
+In the Bayesian approach, the estimator for $p$ is the posterior mean, which in this case is
+$$
+\hat{p}_B = \frac{\alpha'}{\alpha'+\beta'}=\frac{12}{12+115} \simeq 0.09449
+$$
+
+```{r}
+
+# GENERIC FUNCTIONS
+beta.mean <- function(alpha_, beta_){
+  return(alpha_/(alpha_+beta_))
+}
+beta.variance <- function(alpha_, beta_){
+  return(
+    (alpha_*beta_)/((alpha_+beta_)^2*(alpha_+beta_+1))
+  )
+}
+beta.cred.int <- function(alpha_, beta_){
+  return(
+    c(
+      qbeta(0.025, alpha_, beta_), 
+      qbeta(0.975, alpha_, beta_)
+    )
+  )
+}
+
+```
+
+```{r}
+
+mean.water <- beta.mean(alpha.water, beta.water)
+variance.water <- beta.variance(alpha.water, beta.water)
+cred.int.water <- beta.cred.int(alpha.water, beta.water)
+
+df_ <- data.frame(
+  mean = mean.water, 
+  variance = variance.water, 
+  Cred.Int.Low = cred.int.water[1], 
+  Cred.Int.High = cred.int.water[2]
+)
+
+df_ %>% 
+  kable(digits=6) %>%
+  kable_styling(full_width=FALSE)
+
+```
+
+
+### (d) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach
 $$
 H_0: p=0.1 \text{ versus } H_1: p\neq 0.1
 $$
+
+This requires a two-sides hypothesis test, where the null distribution is the sampling distribution of $y$, given that $H_0$ is true: $Binom(y|n=116, p=0.1)$.
+
+In the Neyman and Pearson approach I simply have to check if $y=11$ lies inside or outside the rejection region, defined as the region in which the probability of $y$ is under the significance level $\alpha$.
+
+```{r}
+
+n  <- 116
+y  <- 11
+p0 <- 0.1
+
+alpha.value <- 0.05
+
+# function to plot the histogram for the hypothesis test
+gg_HT <- function(n_, p0_, y_){
+  yplot <- seq(0, 30)
+  
+  ggplot()+
+    geom_col(aes(x=yplot, y=dbinom(yplot, n_, p0_)), color='white', fill='lightblue', alpha=1)+
+    geom_col(aes(x=y_, y=dbinom(y_, n_, p0_)), color='white', fill='darkorange')+
+    geom_hline(yintercept=alpha.value, color='firebrick', linetype='dashed', size=0.6)+
+    annotate('text', x=2.5, y=alpha.value+0.005, label=paste('alpha=', alpha.value, sep=''))+
+    labs(
+      x='y', 
+      y=paste('P(y|p=', p0_, ', n=', n_, ')', sep=''),
+      title='Hypothesis Test', 
+      subtitle='Water quality of streams'
+    )+
+    theme_bw()
+}
+
+gg_HT(n, p0, y)
+glue('Value in y={y}: {round(dbinom(y, n, p0), 4)} > {alpha.value}')
+
+```
+
+I observe that $y = 10$ lies inside the acceptance region, so I do not reject the null hypothesis. I would have obtain the same result by evaluating the p-value:
+
+```{r}
+glue('p-value: {round(pbinom(y, n, p0)+1-pbinom(n-y-1, n, p0), 4)} > {alpha.value}')
+
+```
+The hypothesis test can be performed also using the Bayesian approach. I assume a $Beta(1, 10)$ function as prior, so the posterior distribution is the same as in point (b). I already computed in point (c) the $(1-\alpha)\cdot 100\%=95\%$ credibility interval for $p$, so to accept or reject the null hypothesis I simply have to check if $p_0=0.1$ lies inside or outside the interval. 
+
+```{r}
+glue('95% credibility interval for p: [{round(cred.int.water[1], 4)}, {round(cred.int.water[2], 4)}]')
+
+```
+$p_0$ lies inside the interval, so also with the Bayesian approach I do not reject the null hypothesis $H_0$.
+
 
 ### A new measurement, performed one month later on n = 165 water samples, gives y = 9 high bacteria X level
+### (e) find the frequentist estimator for _p_
+For the same reason described in point (a), the frequentist estimator for $p$ is
+$$
+\hat{p}_F = \frac{y}{n} = \frac{9}{165} \simeq 0.054545
+$$
 
-#### (e) find the frequentist estimator for _p_
+### (f) find a bayesian estimator for _p_, assuming both a _Beta(1; 10)_ prior for _p_ and the posterior probability of the older measurement as the prior for the new one.
+To find the Bayesian estimator, I must first compute the posterior distribution associated with each of the considered priors. Assuming a $Beta(1,10)$ prior, the posterior $P(p|y)$ is a Beta distribution with parameters 
+$$
+\begin{align}
+\alpha'&=\alpha+y = 1+9 = 10 \\
+\beta'&=\beta+n-y = 10+165-9 = 166
+\end{align}
+$$
 
-#### (f) find a bayesian estimator for _p_, assuming both a _Beta(1; 10)_ prior for _p_, and assuming the posterior probability of the older measurement as the prior for the new one.
+Instead, assuming as prior the posterior probability of the older measurement, which was a $Beta(12, 115)$ function, the posterior is again a Beta distribution, in this case with parameters
+$$
+\begin{align}
+\alpha'&=\alpha_{old}+y = 12+9 = 21 \\
+\beta'&=\beta_{old}+n-y = 115+165-9 = 271
+\end{align}
+$$
 
-#### (g) find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
+**Beta(1, 10) prior**
+$$
+\hat{p}_B = \frac{\alpha'}{\alpha'+\beta'}=\frac{10}{10+166} \simeq 0.056818
+$$
+**Beta(12, 115) prior, i.e. posterior of the older measurement**
+$$
+\hat{p}_B = \frac{\alpha'}{\alpha'+\beta'}=\frac{21}{21+271} \simeq 0.071918
+$$
 
-#### (h) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach 
+### (g) find the posterior mean and variance, and a 95% credible interval
+```{r}
+
+alpha.w.1 <- 10
+beta.w.1  <- 166
+
+alpha.w.2 <- 21
+beta.w.2  <- 271
+
+mean.w.1 <- beta.mean(alpha.w.1, beta.w.1)
+variance.w.1 <- beta.variance(alpha.w.1, beta.w.1)
+cred.int.w.1 <- beta.cred.int(alpha.w.1, beta.w.1)
+
+mean.w.2 <- beta.mean(alpha.w.2, beta.w.2)
+variance.w.2 <- beta.variance(alpha.w.2, beta.w.2)
+cred.int.w.2 <- beta.cred.int(alpha.w.2, beta.w.2)
+
+df_ <- data.frame(row.names=c('Beta.1.10', 'Beta.12.115'))
+df_['mean'] <- c(mean.w.1, mean.w.2)
+df_['variance'] <- c(variance.w.1, variance.w.2)
+df_['Cred.Int.Low']  <- c(cred.int.w.1[1], cred.int.w.2[1])
+df_['Cred.Int.High'] <- c(cred.int.w.1[2], cred.int.w.2[2])
+
+df_ %>% 
+  kable(digits=6) %>%
+  kable_styling(full_width=FALSE)
+
+```
+
+Plot the posteriors: 
+```{r}
+
+xsize= 400
+x <- seq(0, 1, length=xsize)
+x.zoom <- seq(0, 0.15, length=xsize)
+
+gg_w_12 <- ggplot()+
+  geom_line(aes(x, dbeta(x, alpha.w.1, beta.w.1), color='Beta(1, 10)'), size=0.6)+
+  geom_line(aes(x, dbeta(x, alpha.w.2, beta.w.2), color='Beta(12, 115)'), size=0.6, linetype='twodash')+
+  labs(
+    x='p', 
+    y='P(p|y, n)', 
+    title='Posterior distributions'
+  )+
+  xlim(0, 1)+
+  ylim(0, 30)+
+  scale_color_manual('Assumed prior', values=c('Beta(1, 10)'='navyblue', 'Beta(12, 115)'='orangered'))+
+  theme_bw()
+
+gg_w_12_zoom <- ggplot()+
+  geom_line(aes(x.zoom, dbeta(x.zoom, alpha.w.1, beta.w.1)), color='navyblue', size=0.6)+
+  geom_line(aes(x.zoom, dbeta(x.zoom, alpha.w.2, beta.w.2)), color='orangered', size=0.6, linetype='twodash')+
+  labs(
+    x='p', 
+    y='P(p|y, n)'
+  )+
+  ylim(0, 30)+
+  theme_bw()
+
+
+gg_w_12 + annotation_custom(ggplotGrob(gg_w_12_zoom), xmin = 0.5, xmax = 1, ymin = 10, ymax = 30)
+
+```
+
+
+
+### (h) test the following hypotesis at 5% level of significance with both the frequentist and bayesian approach 
 $$
 H_0: p=0.1 \text{ versus } H_1: p\neq 0.1
 $$
 
+As in point (d), the null distribution is the sampling distribution of $y$, given that $H_0$ is true: $Binom(y|n=165, p=0.1)$.
+
+```{r}
+
+# useful quantities
+n  <- 165
+y  <- 9
+p0 <- 0.1
+
+alpha.value <- 0.05
+
+```
+
+
+**Frequentist approach** <br>
+```{r}
+
+gg_HT(n, p0, y)
+glue('Value in y={y}: {round(dbinom(y, n, p0), 4)} < {alpha.value}')
+
+```
+$y=9$ lies outside the acceptance region, so according to the Neyman and Pearson approach I reject the null hypothesis $H_0$. The same result can be obtained by evaluating the p-value:
+
+```{r}
+glue('p-value: {round(pbinom(y, n, p0)+1-pbinom(n-y-1, n, p0), 4)} < {alpha.value}')
+
+```
+
+**Bayesian approach** <br>
+With the Bayesian approach it is necessary to distinguish between the 2 priors defined in point (f). For each, the null hypothesis is accepted or rejected depending on whether $p_0$ falls inside the 95% credibility interval for $p$ or not. 
+
+```{r}
+
+glue('
+  95% credibility interval for p, assuming a Beta(1, 10) prior: 
+  [{round(cred.int.w.1[1], 4)}, {round(cred.int.w.1[2], 4)}]\n
+  95% credibility interval for p, assuming a Beta(12, 115) prior: 
+  [{round(cred.int.w.2[1], 4)}, {round(cred.int.w.2[2], 4)}]'
+)
+
+```
+The result is different in the two cases, in fact in the first $p_0=0.1$ lies outside the interval, while in the second it falls inside. So, with Bayesian approach I reject the null hypothesis when using a $Beta(1, 10)$ prior, while a accept it when using as prior the posterior of the older measurement. This is reasonable, as $p_0$ is very close to the upper bounds of both 95% credibility intervals and in the second case the prior and the posterior are both slightly shifted towards larger values of $p$. 
+
+```{r}
+
+ggplot()+
+  geom_line(aes(x, dbeta(x, 1, 10), color='Beta(1, 10)'), size=0.6)+
+  geom_line(aes(x, dbeta(x, 12, 115), color='Beta(12, 115)'), size=0.6, linetype='twodash')+
+  labs(
+    x='p', 
+    y='P(p)', 
+    title='Prior distributions'
+  )+
+  xlim(0, 1)+
+  scale_y_continuous(breaks=seq(0, 16, by=4), limits=c(0, 16))+
+  scale_color_manual('', values=c('Beta(1, 10)'='navyblue', 'Beta(12, 115)'='orangered'))+
+  theme_bw()+
+  theme(legend.title=element_blank())
+
+```
 
 # Exercise 4
 Analyze the data of Exercise 1 using a MCMC with JAGS (solve only point c of Ex 1). 
