@@ -20,13 +20,16 @@ options(digits=5) # set number of digits equal to 5
 library(tidyverse)
 
 # others
-library(gridExtra)
 library(kableExtra)
 library(glue)
-library(patchwork)
 library(latex2exp)
 library(scales)
-library(metR)   # label contour plot
+library(R6)
+
+# jags
+library(rjags)
+library(ggmcmc)
+library(ggpubr)
 
 ```
 
@@ -50,8 +53,6 @@ $$
 $$
 
 ### (c) Setup a bayesian computation of the posterior probability, assuming a beta distribution with mean value 0.15 and standard deviation 0.14. Plot the posterior distribution of _p_, and mark on the plot the mean value and variance.
-
->>> DA CONTROLLARE (risultati + plot variance)
 
 The prior is a Beta distribution with $m=0.15$ and $\sigma=0.14$. For a Beta distribution
 $$
@@ -219,15 +220,22 @@ Ladislaus Josephovich Bortkiewicz was a Russian economist and statistician. He n
 
 ### (a) Assuming a uniform prior, compute and plot the posterior distribution for $\lambda$, the death rate over the measurement time. Determine the posterior mean, median and variance, and compute the 95% credibility interval.
 
-Assuming a uniform prior for a Poisson process, the posterior becomes a $Gamma(\alpha, \beta)$ function with shape $\alpha=\sum y_i + 1$ and rate $\beta=n$, the number of observations. In this case, we have 
+Assuming a uniform prior for a Poisson process, the posterior becomes a $Gamma(\alpha, \beta)$ function with shape $\alpha=\sum y_i + 1$ and rate $\beta=n$, the number of observations. I want to keep the 2 observations, n1 and n2, separated, so I will compute the posterior distribution for lambda for both measurements. 
+
+To solve the problem, I need the following quantities:
 
 $$
 \begin{align}
-n &= \sum_{i=0}^4 \left[(n_1)_i + (n_2)_i\right] \\
-\sum y_i &= \sum_{i=0}^4 i\cdot\left[(n_1)_i + (n_2)_i\right] 
+n_{1, \text{tot}} &= \sum_{i=0}^5 (n_1)_i \\
+n_{2, \text{tot}} &= \sum_{i=0}^5 (n_2)_i \\
+\sum (y_1)_i &= \sum_{i=0}^5 i\cdot(n_1)_i \\
+\sum (y_2)_i &= \sum_{i=0}^5 i\cdot(n_2)_i  
 \end{align}
 $$
 ```{r}
+
+# define general function and the dataframe
+
 gamma.mean <- function(shape, rate){
   return(shape/rate)
 }
@@ -237,32 +245,8 @@ gamma.variance <- function(shape, rate){
 gamma.median <- function(shape, rate){
   return(qgamma(0.5, shape=shape, rate=rate))
 }
-```
 
-```{r}
-
-df_horsekick <- data.frame(
-  y   = c(0, 1, 2, 3, 4, 5), 
-  n.1 = c(109, 65, 22, 3, 1, 0), 
-  n.2 = c(144, 91, 32, 11, 2, 0)
-)
-
-# df_horsekick %>% 
-#   kable() %>%
-#   kable_styling(full_width=FALSE)
-
-n <- sum(df_horsekick$n.1+df_horsekick$n.2)
-s.y <- sum((df_horsekick$n.1+df_horsekick$n.2)*df_horsekick$y)
-
-alpha.hk.unif <- s.y+1
-beta.hk <- n
-
-mean.hk.unif <- gamma.mean(alpha.hk.unif, beta.hk)
-variance.hk.unif <- gamma.variance(alpha.hk.unif, beta.hk)
-median.hk.unif <- gamma.median(alpha.hk.unif, beta.hk)
-cred.int.unif <- c(qgamma(0.025, shape=alpha.hk.unif, rate=beta.hk), qgamma(0.975, alpha.hk.unif, beta.hk))
-
-gg_post <- function(post.funct, limits, mean, median, Title='Posterior'){
+gg_post <- function(post.funct, limits, mean, median, Title='Posterior', Subtitle=''){
   lambda <- seq(0.25, 1.25, length=400)
   lambda95 <- seq(limits[1], limits[2], length=400)
     
@@ -274,21 +258,73 @@ gg_post <- function(post.funct, limits, mean, median, Title='Posterior'){
       x=TeX('$\\lambda$'), 
       y=TeX('$P(\\lambda|\\{y_i\\})$')
     )+
-    scale_y_continuous(breaks=seq(0, 12, by=3), limits=c(0, 12))+
+    {if (Subtitle!='') labs(subtitle=Subtitle)}+
+    scale_y_continuous(breaks=seq(0, 9, by=3), limits=c(0, 9))+
     geom_vline(xintercept=limits, linetype='dashed', size=0.6)+
     geom_vline(xintercept=mean, linetype='dashed', size=0.6, color='firebrick')+
-    annotate('text', x=limits[1]-0.1, y=9.75, label=paste('x1=', format(limits[1], digits=2, nsmall=2), sep=''))+
-    annotate('text', x=limits[2]+0.1, y=9.75, label=paste('x2=', format(limits[2], digits=2, nsmall=2), sep=''))+
-    annotate('text', x=mean+0.12, y = 11.25, label=paste('mean=', format(round(mean, 2), nsmall = 2), sep=''), color='firebrick')+
+    annotate('text', x=limits[1]-0.08, y=6.75, 
+             label=paste('x1=', format(limits[1], digits=2, nsmall=2), sep=''))+
+    annotate('text', x=limits[2]+0.08, y=6.75, 
+             label=paste('x2=', format(limits[2], digits=2, nsmall=2), sep=''))+
+    annotate('text', x=mean+0.09, y = 8.25, 
+             label=paste('mean=', format(round(mean, 2), nsmall = 2), sep=''), color='firebrick')+
     theme_bw()
 }
 
+df_horsekick <- data.frame(
+  y   = c(0, 1, 2, 3, 4, 5), 
+  n.1 = c(109, 65, 22, 3, 1, 0), 
+  n.2 = c(144, 91, 32, 11, 2, 0)
+)
+
+```
+
+**Observations 1.**
+```{r}
+
+n1.tot <- sum(df_horsekick$n.1)
+s.y.1 <- sum(df_horsekick$n.1*df_horsekick$y)
+
+alpha.hk.unif.1 <- s.y.1+1
+beta.hk.1 <- n1.tot
+
+mean.hk.unif.1 <- gamma.mean(alpha.hk.unif.1, beta.hk.1)
+variance.hk.unif.1 <- gamma.variance(alpha.hk.unif.1, beta.hk.1)
+median.hk.unif.1 <- gamma.median(alpha.hk.unif.1, beta.hk.1)
+cred.int.unif.1 <- c(qgamma(0.025, shape=alpha.hk.unif.1, rate=beta.hk.1), qgamma(0.975, alpha.hk.unif.1, beta.hk.1))
+
 gg_post(
-  function(x){dgamma(x, shape=alpha.hk.unif, rate=beta.hk)}, 
-  cred.int.unif, 
-  mean.hk.unif, 
-  median.hk.unif, 
-  Title='Posterior distribution, postive uniform prior'
+  function(x){dgamma(x, shape=alpha.hk.unif.1, rate=beta.hk.1)}, 
+  cred.int.unif.1, 
+  mean.hk.unif.1, 
+  median.hk.unif.1, 
+  Title=paste('Posterior distribution: Gamma(', alpha.hk.unif.1, ', ', beta.hk.1, ')', sep=''),
+  Subtitle='Positive uniform prior, observations 1'
+)
+
+```
+
+**Observations 2.**
+```{r}
+
+n2.tot <- sum(df_horsekick$n.2)
+s.y.2 <- sum(df_horsekick$n.2*df_horsekick$y)
+
+alpha.hk.unif.2 <- s.y.2+1
+beta.hk.2 <- n2.tot
+
+mean.hk.unif.2 <- gamma.mean(alpha.hk.unif.2, beta.hk.2)
+variance.hk.unif.2 <- gamma.variance(alpha.hk.unif.2, beta.hk.2)
+median.hk.unif.2 <- gamma.median(alpha.hk.unif.2, beta.hk.2)
+cred.int.unif.2 <- c(qgamma(0.025, shape=alpha.hk.unif.2, rate=beta.hk.2), qgamma(0.975, alpha.hk.unif.2, beta.hk.2))
+
+gg_post(
+  function(x){dgamma(x, shape=alpha.hk.unif.2, rate=beta.hk.2)}, 
+  cred.int.unif.2, 
+  mean.hk.unif.2, 
+  median.hk.unif.2, 
+  Title=paste('Posterior distribution: Gamma(', alpha.hk.unif.2, ', ', beta.hk.2, ')', sep=''),
+  Subtitle='Positive uniform prior, observations 2'
 )
 
 ```
@@ -298,37 +334,63 @@ Assuming a Jeffrey's prior
 $$
 g(\lambda) \propto 1/\sqrt{\lambda}\quad , \quad \text{with } \lambda>0
 $$
-the posterior is again a $Gamma(\alpha, \beta)$ function and the only difference from the previous case is that now $\alpha=\sum y_i+1/2$.
+the posterior is again a $Gamma(\alpha, \beta)$ function and the only difference from the previous case is that now $\alpha=\sum y_i+1/2$. Again, I will distinguish between the 2 measurements.
 
+**Observations 1.**
 ```{r}
 
-alpha.hk.jeffrey <- s.y+1/2
+alpha.hk.jeffrey.1 <- s.y.1+1/2
 
-mean.hk.jeffrey <- gamma.mean(alpha.hk.jeffrey, beta.hk)
-variance.hk.jeffrey <- gamma.variance(alpha.hk.jeffrey, beta.hk)
-median.hk.jeffrey <- gamma.median(alpha.hk.jeffrey, beta.hk)
-cred.int.jeffrey <- c(qgamma(0.025, shape=alpha.hk.jeffrey, rate=beta.hk), qgamma(0.975, alpha.hk.jeffrey, beta.hk))
+mean.hk.jeffrey.1 <- gamma.mean(alpha.hk.jeffrey.1, beta.hk.1)
+variance.hk.jeffrey.1 <- gamma.variance(alpha.hk.jeffrey.1, beta.hk.1)
+median.hk.jeffrey.1 <- gamma.median(alpha.hk.jeffrey.1, beta.hk.1)
+cred.int.jeffrey.1 <- c(qgamma(0.025, shape=alpha.hk.jeffrey.1, rate=beta.hk.1), qgamma(0.975, alpha.hk.jeffrey.1, beta.hk.1))
 
 gg_post(
-  function(x){dgamma(x, shape=alpha.hk.jeffrey, rate=beta.hk)}, 
-  cred.int.jeffrey, 
-  mean.hk.jeffrey, 
-  median.hk.jeffrey, 
-  Title="Posterior distribution, Jeffrey's prior"
+  function(x){dgamma(x, shape=alpha.hk.jeffrey.1, rate=beta.hk.1)}, 
+  cred.int.jeffrey.1, 
+  mean.hk.jeffrey.1, 
+  median.hk.jeffrey.1, 
+  Title=paste('Posterior distribution: Gamma(', alpha.hk.jeffrey.1, ', ', beta.hk.1, ')', sep=''),
+  Subtitle="Jeffrey's prior, observations 1"
 )
 
 ```
 
-Let's summarize the results. 
+**Observations 2.**
+```{r}
+
+alpha.hk.jeffrey.2 <- s.y.2+1/2
+
+mean.hk.jeffrey.2 <- gamma.mean(alpha.hk.jeffrey.2, beta.hk.2)
+variance.hk.jeffrey.2 <- gamma.variance(alpha.hk.jeffrey.2, beta.hk.2)
+median.hk.jeffrey.2 <- gamma.median(alpha.hk.jeffrey.2, beta.hk.2)
+cred.int.jeffrey.2 <- c(qgamma(0.025, shape=alpha.hk.jeffrey.2, rate=beta.hk.2), qgamma(0.975, alpha.hk.jeffrey.2, beta.hk.2))
+
+gg_post(
+  function(x){dgamma(x, shape=alpha.hk.jeffrey.2, rate=beta.hk.2)}, 
+  cred.int.jeffrey.2, 
+  mean.hk.jeffrey.2, 
+  median.hk.jeffrey.2, 
+  Title=paste('Posterior distribution: Gamma(', alpha.hk.jeffrey.2, ', ', beta.hk.2, ')', sep=''),
+  Subtitle="Jeffrey's prior, observations 2"
+)
+
+```
+
+**Summarize the results.** 
 
 ```{r}
 
-df_ <- data.frame(row.names=c('Uniform', 'Jeffrey'))
-df_['mean'] = c(mean.hk.unif, mean.hk.jeffrey)
-df_['median'] = c(median.hk.unif, median.hk.jeffrey)
-df_['variance'] = c(variance.hk.unif, variance.hk.jeffrey)
-df_['Cred.Int.Low'] = c(cred.int.unif[1], cred.int.jeffrey[1])
-df_['Cred.Int.High'] = c(cred.int.unif[2], cred.int.jeffrey[2])
+df_ <- data.frame(
+  observation   = rep(1:2, each=2),
+  prior         = rep(c('Unif', 'Jeffrey'), 2),
+  mean          = c(mean.hk.unif.1, mean.hk.jeffrey.1, mean.hk.unif.2, mean.hk.jeffrey.2),
+  median        = c(median.hk.unif.1, median.hk.jeffrey.1, median.hk.unif.2, median.hk.jeffrey.2),
+  variance      = c(variance.hk.unif.1, variance.hk.jeffrey.1, variance.hk.unif.2, variance.hk.jeffrey.2),
+  Cred.Int.Low  = c(cred.int.unif.1[1], cred.int.jeffrey.1[1], cred.int.unif.2[1], cred.int.jeffrey.2[1]),
+  Cred.Int.High = c(cred.int.unif.1[2], cred.int.jeffrey.1[2], cred.int.unif.2[2], cred.int.jeffrey.2[2])
+)
 
 df_ %>% 
   kable(digits=6) %>%
@@ -436,7 +498,7 @@ This requires a two-sides hypothesis test, where the null distribution is the sa
 
 In the Neyman and Pearson approach I simply have to check if $y=11$ lies inside or outside the rejection region, defined as the region in which the probability of $y$ is under the significance level $\alpha$.
 
-```{r}
+```{r, warning=FALSE}
 
 n  <- 116
 y  <- 11
@@ -459,12 +521,16 @@ gg_HT <- function(n_, p0_, y_){
       title='Hypothesis Test', 
       subtitle='Water quality of streams'
     )+
+    scale_x_continuous(breaks=seq(0,30, by=2), limits=c(0, 30))+
     theme_bw()
 }
 
 gg_HT(n, p0, y)
 glue('Value in y={y}: {round(dbinom(y, n, p0), 4)} > {alpha.value}')
 
+```
+```{r}
+factor(0:30)
 ```
 
 I observe that $y = 10$ lies inside the acceptance region, so I do not reject the null hypothesis. I would have obtain the same result by evaluating the p-value:
@@ -601,7 +667,7 @@ alpha.value <- 0.05
 
 
 **Frequentist approach** <br>
-```{r}
+```{r, warning=FALSE}
 
 gg_HT(n, p0, y)
 glue('Value in y={y}: {round(dbinom(y, n, p0), 4)} < {alpha.value}')
@@ -647,11 +713,343 @@ ggplot()+
 
 ```
 
+# MCMC (JAGS) object
+Starting with the coda output, here I define an `R6` object which uses the `ggmcmc` package to perform the chain analysis and display the results of MCMC. Some methods are just wrappers around the built-in `ggmcmc` functions. 
+
+```{r}
+
+chainR6 <- R6Class(
+  'chainR6', 
+  public = list(
+    param = NULL,       # string
+    chain.ggs = NULL,   # coda.samples object
+    
+    initialize = function(chain_, param){
+      self$param <- param
+      self$chain.ggs <- ggs(chain_)
+    }, 
+    
+    # plot the chains
+    traceplot = function(title=''){
+      ggs_traceplot(self$chain.ggs)+
+        geom_line(color='steelblue')+
+        labs(
+          x='Iteration',
+          y='Value'
+        )+
+        {if (title!='') labs(title=title)}+
+        theme_bw()
+    }, 
+    
+    # plot the density of the parameter
+    density = function(title=''){
+      self$chain.ggs %>%
+        filter(Parameter==self$param) %>%
+        ggs_density()+
+          geom_density(color='steelblue', fill='lightblue', alpha=0.6)+
+          labs(
+            x='Value', 
+            y='Density' 
+          )+
+          {if (title!='') labs(title=title)}+
+          theme_bw()
+    }, 
+    
+    # plot running mean
+    running = function(title=''){
+      ggs_running(self$chain.ggs)+
+        {if (title!='') labs(title=title)}+
+        theme_bw()+
+        theme(legend.position="none")
+    },
+    
+    # plot autocorrelation
+    autocorrelation = function(title=''){
+      ggs_autocorrelation(self$chain.ggs)+
+        geom_col(fill='steelblue')+
+        {if (title!='') labs(title=title)}+
+        theme_bw()
+    },
+    
+    # plot the histogram of p, with the credibility interval
+    inference = function(y.cred.int=1, ci.round=3, subtitle=''){
+      
+      cred.int <- ci(self$chain.ggs, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975))[1,c('low','high')]
+      
+      self$chain.ggs %>%
+        filter(Parameter==self$param) %>%
+        ggplot(aes(x=value))+
+          geom_histogram(aes(y=..density..), bins=40, color='white', fill='forestgreen')+
+          geom_segment(aes(x = cred.int$low, y = 0, xend = cred.int$high, yend = 0), size=2.5, color='darkred')+
+          annotate('label', x=(cred.int$low+cred.int$high)/2, y=y.cred.int, label='95% Cred. Int.',     
+                   size=6, fill='white', alpha=0.8)+
+          annotate('label', x=cred.int$low, y=y.cred.int, label=paste(round(cred.int$low, ci.round)),  
+                   size=6, fill='white', alpha=0.8)+
+          annotate('label', x=cred.int$high, y=y.cred.int, label=paste(round(cred.int$high, ci.round)), 
+                   size=6, fill='white', alpha=0.8)+
+          labs(
+           x=self$param, 
+           y=paste('f(', self$param, ')', sep=''), 
+           title=paste('Inference on ', self$param, sep='')
+          )+
+          {if (subtitle!='') labs(subtitle=subtitle)}+
+          theme_bw()
+    }, 
+    
+    # plot the predictions of y
+    prediction = function(binomial=FALSE, n.next=NA, x.plot.max=NA, subtitle=''){
+      if (binomial){
+        Title <- paste('Number of successes in ', n.next, ' future trials', sep='')
+        xmax  <- n.next
+      } else{
+        Title <- 'Predicted counts'
+        xmax  <- x.plot.max
+      }
+      
+      self$chain.ggs %>%
+        filter(Parameter=='y') %>%
+        ggplot(aes(x=value))+
+          geom_bar(aes(y = ..prop..), color='black', fill='firebrick')+
+          labs(
+            x='y', 
+            y='f(y)',
+            title=Title
+          )+
+          {if (subtitle!='') labs(subtitle=subtitle)}+
+          scale_x_continuous(breaks=seq(0, xmax, by=1))+
+          theme_bw()
+    },
+    
+    # plot correlation between p and y
+    correlation = function(x.min, x.max, y.min, y.max, subtitle=''){
+      self$chain.ggs %>%
+        summarise(
+          y=value[Parameter=='y'],
+          p=value[Parameter==self$param]
+        )%>%
+        ggplot()+
+          geom_point(aes(x=p, y=y), color='navyblue', shape=3)+
+          labs(
+            title=paste('Correlation between ', self$param, ' and the predicted variable', sep='')
+          )+
+          {if (subtitle!='') labs(subtitle=subtitle)}+
+          xlim(x.min, x.max)+
+          ylim(y.min, y.max)+
+          theme_bw()
+    }
+  )
+)
+
+
+
+```
+
 # Exercise 4
-Analyze the data of Exercise 1 using a MCMC with JAGS (solve only point c of Ex 1). 
+Analyze the data of Exercise 1 using a MCMC with JAGS (solve only point c of Ex 1). Notice that in the Exercise 1 we are dealing with a Bernoulli process, but we only know the number of successes out of $n$ trials.
+
+### JAGS model
+```{r}
+
+modelpath_e4 <- "./bugs_models/model_ex4.bug"
+
+model_string <- "model {
+    # data likelihood (prob of y given p and n)
+    X ~ dbin(p, n);
+    
+    # beta prior for p
+    p ~ dbeta(alpha, beta);
+    
+    # predicted data , given p and the number of samples
+    y ~ dbin(p, n_next);
+}
+"
+
+writeLines(model_string , con=modelpath_e4)
+
+```
+
+### Run MCMC and plot the results
+```{r}
+
+data <- NULL
+data$X <- 6       # number of observations
+data$n <- 75      # number of patients screened
+data$n_next <- 10 # predictions (10 more data)
+
+data$alpha <- alpha.prior
+data$beta  <- beta.prior
+
+jm <- jags.model(file=modelpath_e4, data=data, n.chains=1, n.adapt=500)
+
+update(jm, 1000)
+chain <- coda.samples(jm, c("p", "y"), n.iter=10000)
+print(summary(chain))
+
+# Correlation matrix
+cat("Correlation matrix: \n")
+as.data.frame(as.mcmc(chain)) %>%
+  cor() %>%
+  print()
+
+chain_e4 <- chainR6$new(chain, param='p')
+
+```
+```{r}
+
+chain_e4$traceplot()
+chain_e4$density()
+chain_e4$running()
+chain_e4$autocorrelation()
+
+```
+
+```{r, warning=FALSE}
+
+chain_e4$inference(y.cred.int=1.25)
+chain_e4$prediction(binomial=TRUE, n.next=data$n_next)
+chain_e4$correlation(x.min=0, x.max=0.25, y.min=0, y.max=data$n_next)
+
+```
 
 # Exercise 5
 Analyze the data of Exercise 2 using a MCMC with JAGS.
 
+### JAGS model
+
+```{r}
+
+modelpath_e5 <- "./bugs_models/model_ex5.bug"
+
+model_string <- "model {
+    # data likelihood 
+    for (i in 1:length(X)) {
+      X[i] ~ dpois(lambda);
+    }
+
+    # uniform prior for lambda
+    lambda ~ dunif(min.prior, max.prior)
+    
+    # predicted data , given lambda
+    y ~ dpois(lambda);
+}
+"
+
+writeLines(model_string, con=modelpath_e5)
+
+```
+
+### Run MCMC and plot the results
+In this case, given the table in exercise 02, I need to generate the data, repeating each value of $y$ the corresponding number of times ($n_1$ or $n_2$). Furthermore, I have to distinguish between the 2 sets of observations. 
+
+```{r}
+
+df_horsekick %>%
+  kable() %>%
+  kable_styling(full_width=FALSE)
+
+obs.1 <- rep(df_horsekick$y, df_horsekick$n.1)
+obs.2 <- rep(df_horsekick$y, df_horsekick$n.2)
+
+cat('Observations 1:\n', obs.1, '\n\nObservations 2:\n', obs.2)
+
+```
+
+**Observations 1.**
+```{r}
+
+data <- NULL
+
+data$X <- obs.1
+data$min.prior <- 0
+data$max.prior <- 10
+
+jm <- jags.model(file=modelpath_e5, data=data, n.chains=1, n.adapt=500)
+
+update(jm, 1000)
+chain <- coda.samples(jm, c("lambda", "y"), n.iter=10000)
+print(summary(chain))
+
+# Correlation matrix
+cat("Correlation matrix: \n")
+as.data.frame(as.mcmc(chain)) %>%
+  cor() %>%
+  print()
+
+chain_e5_1 <- chainR6$new(chain, param='lambda')
+
+```
+
+**Observations 2.**
+```{r}
+
+data <- NULL
+
+data$X <- obs.2
+data$min.prior <- 0
+data$max.prior <- 10
+
+jm <- jags.model(file=modelpath_e5, data=data, n.chains=1, n.adapt=500)
+
+update(jm, 1000)
+chain <- coda.samples(jm, c("lambda", "y"), n.iter=10000)
+print(summary(chain))
+
+# Correlation matrix
+cat("Correlation matrix: \n")
+as.data.frame(as.mcmc(chain)) %>%
+  cor() %>%
+  print()
+
+chain_e5_2 <- chainR6$new(chain, param='lambda')
+
+```
+
+### Chain analysis and results
+
+```{r}
+
+tit.1 <- 'Observations 1'
+tit.2 <- 'Observations 2'
+
+ggarrange(chain_e5_1$traceplot(title=tit.1), chain_e5_2$traceplot(title=tit.2), ncol=2, nrow=1)
+ggarrange(chain_e5_1$density(title=tit.1), chain_e5_2$density(title=tit.2), ncol=1, nrow=2)
+ggarrange(chain_e5_1$running(title=tit.1), chain_e5_2$running(title=tit.2), ncol=2, nrow=1)
+ggarrange(chain_e5_1$autocorrelation(title=tit.1), chain_e5_2$autocorrelation(title=tit.2), ncol=1, nrow=2)
+
+```
+
+```{r, warning=FALSE}
+
+ggarrange(
+  chain_e5_1$inference(y.cred.int=1.25, subtitle=tit.1), 
+  chain_e5_2$inference(y.cred.int=1.25, subtitle=tit.2), 
+  ncol=1, nrow=2
+)
+ggarrange(
+  chain_e5_1$prediction(x.plot.max=5, subtitle=tit.1), 
+  chain_e5_2$prediction(x.plot.max=5, subtitle=tit.2), 
+  ncol=1, nrow=2
+)
+ggarrange(
+  chain_e5_1$correlation(x.min=0.4, x.max=1, y.min=0, y.max=6, subtitle=tit.1), 
+  chain_e5_2$correlation(x.min=0.4, x.max=1, y.min=0, y.max=6, subtitle=tit.2), 
+  ncol=1, nrow=2
+)
+
+
+```
+
 # Exercise 6
 Analyze the data of Exercise 3 using a MCMC with JAGS (solve points b and c).
+
+```{r}
+
+
+```
+
+
+
+
+
+
+

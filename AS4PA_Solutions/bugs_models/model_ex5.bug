@@ -1,0 +1,13 @@
+model {
+    # data likelihood 
+    for (i in 1:length(X)) {
+      X[i] ~ dpois(lambda);
+    }
+
+    # uniform prior for lambda
+    lambda ~ dunif(min.prior, max.prior)
+    
+    # predicted data , given lambda
+    y ~ dpois(lambda);
+}
+

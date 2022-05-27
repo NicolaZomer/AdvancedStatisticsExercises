@@ -1,0 +1,11 @@
+model {
+    # data likelihood (prob of y given p and n)
+    X ~ dbin(p, n);
+    
+    # beta prior for p
+    p ~ dbeta(alpha, beta);
+    
+    # predicted data , given p and the number of samples
+    y ~ dbin(p, n_next);
+}
+
