@@ -26,7 +26,7 @@ library(latex2exp)
 library(scales)
 library(R6)
 
-# jags
+# jags and MCMC
 library(rjags)
 library(ggmcmc)
 library(ggpubr)
@@ -44,7 +44,7 @@ The number of times $y$ the new method fails is distributed according to a binom
 $$
 P(y|p, n)=Binom(y|p, n)=\binom{n}{y}p^y(1-p)^{n-y}
 $$
-where $p$ is the probability of failing to the detect the disease with the new method.
+where $p$ is the probability of failing to the detect the disease.
 
 ### (b) On the n=75 patients sample, the new method fails to detect the disease in y=6 cases. What is the frequentist estimator of the failure probability of the new method?
 Since the number of failures follows the Binomial distribution, an unbiased frequentist estimator of the failure probability of the new method is
@@ -61,7 +61,7 @@ $$
 so it is possible to compute $\alpha$ and $\beta$ given $m$ and $\sigma$
 $$
 \begin{align}
-\alpha&=-\frac{m(\sigma^2+m^2-m)}{\sigma^2} = 0.82 \\
+\alpha&=-\frac{m(\sigma^2+m^2-m)}{\sigma^2} = 0.83 \\
 \beta&=\frac{(\sigma^2+m^2-m)(m-1)}{\sigma^2} = 4.68
 \end{align}
 $$
@@ -80,7 +80,7 @@ m&=\frac{\alpha'}{\alpha'+\beta'} = 0.0848\\
 \end{align}
 $$
 
-```{r}
+```{r, warning=FALSE}
 
 xsize= 400
 x <- seq(0, 1, length=xsize)
@@ -107,8 +107,11 @@ glue(
 
 ggplot()+
   geom_line(aes(x, dbeta(x, alpha.posterior, beta.posterior)), color='navyblue', size=0.6)+
-  geom_vline(xintercept=m.posterior, color='firebrick', linetype='dashed')+
-  annotate('text', x=m.posterior+0.1, y=14, label=paste('mean=', round(m.posterior, 3), sep=''))+
+  geom_vline(xintercept=m.posterior, color='firebrick')+
+  geom_vline(xintercept=m.posterior+c(sqrt(var.posterior), -sqrt(var.posterior)), color='black', linetype='dashed')+
+  annotate('text', x=m.posterior+0.09, y=13.75, label=paste('mean=', round(m.posterior, 3), sep=''), color='firebrick')+
+  annotate('text', x=m.posterior+sqrt(var.posterior)+0.05, y=11.25, label=TeX('$m+\\sigma$'))+
+  annotate('text', x=m.posterior-sqrt(var.posterior)-0.05, y=11.25, label=TeX('$m-\\sigma$'))+
   labs(
     x='p', 
     y='P(p|y, n)', 
@@ -146,7 +149,7 @@ post.H0 <- 1-pbeta(0.15, alpha.posterior, beta.posterior)
 glue('Probability P(p>=0.15|y=6, n=75) = {round(post.H0, 4)} = {round(post.H0*100, 2)}%')
   
 ```
-The result is smaller than $\alpha=5\%$, therefore I reject the null hypothesis at the 5% level of significance. 
+The result is smaller than $\alpha=5\%$, therefore I reject the null hypothesis at the 5% level of significance and I assume that statistically the new test is better that the traditional one.  
 
 ```{r}
 
@@ -171,7 +174,7 @@ ggplot()+
 ### (e) Perform the same hypothesis test in the classical frequentist way.
 The classical frequentist way is based on the Neyman and Pearson approach. The rejection region is chosen so that the distribution of the null hypothesis is under the significance level $\alpha$, where in this case the null distribution is $Binom(y|p=0.15, n=75)$.
 
-```{r}
+```{r, warning=FALSE}
 
 p0 <- 0.15
 y_ <- seq(0, 30)
@@ -187,12 +190,13 @@ ggplot()+
     title='Hypothesis Test', 
     subtitle='Detecting disease in blood'
   )+
+  scale_x_continuous(breaks=seq(0,30, by=2), limits=c(0, 30))+
   theme_bw()
 
 glue('Value in y=6: {round(dbinom(6, 75, p0), 4)} < 0.05')
 
 ```
-$y = 6$ lies in the acceptance region, so I do not reject the null hypothesis $H_0$.
+$y = 6$ lies in the acceptance region, so again I do not reject the null hypothesis $H_0$.
 
 Instead, following Fisher's approach, to decide whether to accept or reject the null hypothesis, it is necessary to calculate the p-value, which in this case (one-side hypothesis test) is given by
 $$
@@ -220,7 +224,7 @@ Ladislaus Josephovich Bortkiewicz was a Russian economist and statistician. He n
 
 ### (a) Assuming a uniform prior, compute and plot the posterior distribution for $\lambda$, the death rate over the measurement time. Determine the posterior mean, median and variance, and compute the 95% credibility interval.
 
-Assuming a uniform prior for a Poisson process, the posterior becomes a $Gamma(\alpha, \beta)$ function with shape $\alpha=\sum y_i + 1$ and rate $\beta=n$, the number of observations. I want to keep the 2 observations, n1 and n2, separated, so I will compute the posterior distribution for lambda for both measurements. 
+Assuming a uniform prior for a Poisson process, the posterior becomes a $Gamma(\alpha, \beta)$ function with shape $\alpha=\sum y_i + 1$ and rate $\beta=n$, the number of observations. I want to keep the 2 observations, n1 and n2, separated, so I will compute the posterior distribution for lambda for each set of measurements independently. 
 
 To solve the problem, I need the following quantities:
 
@@ -234,8 +238,7 @@ n_{2, \text{tot}} &= \sum_{i=0}^5 (n_2)_i \\
 $$
 ```{r}
 
-# define general function and the dataframe
-
+# GENERAL FUNCTIONS
 gamma.mean <- function(shape, rate){
   return(shape/rate)
 }
@@ -271,6 +274,7 @@ gg_post <- function(post.funct, limits, mean, median, Title='Posterior', Subtitl
     theme_bw()
 }
 
+# DATAFRAME
 df_horsekick <- data.frame(
   y   = c(0, 1, 2, 3, 4, 5), 
   n.1 = c(109, 65, 22, 3, 1, 0), 
@@ -483,7 +487,7 @@ df_ <- data.frame(
 )
 
 df_ %>% 
-  kable(digits=6) %>%
+  kable(digits=6, caption='Posterior statistics') %>%
   kable_styling(full_width=FALSE)
 
 ```
@@ -529,9 +533,6 @@ gg_HT(n, p0, y)
 glue('Value in y={y}: {round(dbinom(y, n, p0), 4)} > {alpha.value}')
 
 ```
-```{r}
-factor(0:30)
-```
 
 I observe that $y = 10$ lies inside the acceptance region, so I do not reject the null hypothesis. I would have obtain the same result by evaluating the p-value:
 
@@ -539,7 +540,7 @@ I observe that $y = 10$ lies inside the acceptance region, so I do not reject th
 glue('p-value: {round(pbinom(y, n, p0)+1-pbinom(n-y-1, n, p0), 4)} > {alpha.value}')
 
 ```
-The hypothesis test can be performed also using the Bayesian approach. I assume a $Beta(1, 10)$ function as prior, so the posterior distribution is the same as in point (b). I already computed in point (c) the $(1-\alpha)\cdot 100\%=95\%$ credibility interval for $p$, so to accept or reject the null hypothesis I simply have to check if $p_0=0.1$ lies inside or outside the interval. 
+The hypothesis test can be performed also using the Bayesian approach. I assume a $Beta(1, 10)$ function as prior, so the posterior distribution is the same as in point (b). I already computed in point (c) the $(1-\alpha)\cdot 100\%=95\%$ credibility interval for $p$, so to accept or reject the null hypothesis I simply have to check if $p_0=0.1$ lies inside or outside this interval. 
 
 ```{r}
 glue('95% credibility interval for p: [{round(cred.int.water[1], 4)}, {round(cred.int.water[2], 4)}]')
@@ -610,7 +611,7 @@ df_ %>%
 
 ```
 
-Plot the posteriors: 
+Plot of the posteriors: 
 ```{r}
 
 xsize= 400
@@ -693,7 +694,7 @@ glue('
 )
 
 ```
-The result is different in the two cases, in fact in the first $p_0=0.1$ lies outside the interval, while in the second it falls inside. So, with Bayesian approach I reject the null hypothesis when using a $Beta(1, 10)$ prior, while a accept it when using as prior the posterior of the older measurement. This is reasonable, as $p_0$ is very close to the upper bounds of both 95% credibility intervals and in the second case the prior and the posterior are both slightly shifted towards larger values of $p$. 
+The result is different in the two cases, in fact in the first $p_0=0.1$ lies outside the interval, while in the second it falls inside. So, with Bayesian approach I reject the null hypothesis when using a $Beta(1, 10)$ prior, while I accept it when using as prior the posterior of the older measurement. This is reasonable, as $p_0$ is very close to the upper bounds of both 95% credibility intervals and in the second case the prior and the posterior are both slightly shifted towards larger values of $p$. 
 
 ```{r}
 
@@ -723,6 +724,7 @@ chainR6 <- R6Class(
   public = list(
     param = NULL,       # string
     chain.ggs = NULL,   # coda.samples object
+    cred.int  = NULL,   # credibility interval
     
     initialize = function(chain_, param){
       self$param <- param
@@ -772,26 +774,31 @@ chainR6 <- R6Class(
     },
     
     # plot the histogram of p, with the credibility interval
-    inference = function(y.cred.int=1, ci.round=3, subtitle=''){
+    inference = function(y.cred.int=1, ci.round=3, subtitle='', xlim, ylim){
       
-      cred.int <- ci(self$chain.ggs, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975))[1,c('low','high')]
+      self$cred.int <- (
+        ci(self$chain.ggs, thick_ci = c(0.05, 0.95), thin_ci = c(0.025, 0.975))[1,c('low','high')]
+      )
       
       self$chain.ggs %>%
         filter(Parameter==self$param) %>%
         ggplot(aes(x=value))+
           geom_histogram(aes(y=..density..), bins=40, color='white', fill='forestgreen')+
-          geom_segment(aes(x = cred.int$low, y = 0, xend = cred.int$high, yend = 0), size=2.5, color='darkred')+
-          annotate('label', x=(cred.int$low+cred.int$high)/2, y=y.cred.int, label='95% Cred. Int.',     
-                   size=6, fill='white', alpha=0.8)+
-          annotate('label', x=cred.int$low, y=y.cred.int, label=paste(round(cred.int$low, ci.round)),  
-                   size=6, fill='white', alpha=0.8)+
-          annotate('label', x=cred.int$high, y=y.cred.int, label=paste(round(cred.int$high, ci.round)), 
-                   size=6, fill='white', alpha=0.8)+
+          geom_segment(aes(x = self$cred.int$low, y = 0, xend = self$cred.int$high, yend = 0), 
+                       size=2.5, color='darkred')+
+          annotate('label', x=(self$cred.int$low+self$cred.int$high)/2, y=y.cred.int, 
+                   label='95% Cred. Int.', size=6, fill='white', alpha=0.8)+
+          annotate('label', x=self$cred.int$low, y=y.cred.int, 
+                   label=paste(round(self$cred.int$low, ci.round)),  size=6, fill='white', alpha=0.8)+
+          annotate('label', x=self$cred.int$high, y=y.cred.int, 
+                   label=paste(round(self$cred.int$high, ci.round)), size=6, fill='white', alpha=0.8)+
           labs(
            x=self$param, 
            y=paste('f(', self$param, ')', sep=''), 
            title=paste('Inference on ', self$param, sep='')
           )+
+          {if (!missing(xlim)) xlim(xlim[1], xlim[2])}+
+          {if (!missing(ylim)) ylim(ylim[1], ylim[2])}+
           {if (subtitle!='') labs(subtitle=subtitle)}+
           theme_bw()
     }, 
@@ -834,7 +841,7 @@ chainR6 <- R6Class(
           )+
           {if (subtitle!='') labs(subtitle=subtitle)}+
           xlim(x.min, x.max)+
-          ylim(y.min, y.max)+
+          scale_y_continuous(breaks=seq(y.min, y.max, by=2), limits=c(y.min, y.max))+
           theme_bw()
     }
   )
@@ -843,6 +850,9 @@ chainR6 <- R6Class(
 
 
 ```
+
+# General comments on the results of all the following exercises
+In exercises 4, 5 and 6 I run MCMC with JAGS. In all of these it is possible to notice that the chains behave correctly, the average values of $p$ (or $\lambda$) and $y$ converge rapidly and the autocorrelation scales well with the lag. Regarding the inference of $p$ (or $\lambda$), it is possible to see that the posterior distributions found with JAGS are compatible with the corresponding ones found analytically in the previous exercises (very similar shape, mean/mode, credibility interval). 
 
 # Exercise 4
 Analyze the data of Exercise 1 using a MCMC with JAGS (solve only point c of Ex 1). Notice that in the Exercise 1 we are dealing with a Bernoulli process, but we only know the number of successes out of $n$ trials.
@@ -894,6 +904,7 @@ as.data.frame(as.mcmc(chain)) %>%
 chain_e4 <- chainR6$new(chain, param='p')
 
 ```
+
 ```{r}
 
 chain_e4$traceplot()
@@ -905,7 +916,7 @@ chain_e4$autocorrelation()
 
 ```{r, warning=FALSE}
 
-chain_e4$inference(y.cred.int=1.25)
+chain_e4$inference(y.cred.int=1.25, ylim=c(0, 15))
 chain_e4$prediction(binomial=TRUE, n.next=data$n_next)
 chain_e4$correlation(x.min=0, x.max=0.25, y.min=0, y.max=data$n_next)
 
@@ -1021,8 +1032,8 @@ ggarrange(chain_e5_1$autocorrelation(title=tit.1), chain_e5_2$autocorrelation(ti
 ```{r, warning=FALSE}
 
 ggarrange(
-  chain_e5_1$inference(y.cred.int=1.25, subtitle=tit.1), 
-  chain_e5_2$inference(y.cred.int=1.25, subtitle=tit.2), 
+  chain_e5_1$inference(y.cred.int=1.5, subtitle=tit.1, xlim=c(0.45, 0.9), ylim=c(0, 8)), 
+  chain_e5_2$inference(y.cred.int=1.5, subtitle=tit.2, xlim=c(0.45, 0.9), ylim=c(0, 8)), 
   ncol=1, nrow=2
 )
 ggarrange(
@@ -1042,14 +1053,100 @@ ggarrange(
 # Exercise 6
 Analyze the data of Exercise 3 using a MCMC with JAGS (solve points b and c).
 
+To solve this exercise I can use the same JAGS model defined for exercise 4. 
+
+### Run MCMC and plot the results
 ```{r}
 
+data <- NULL
+data$X <- 11       # number of observations
+data$n <- 116      # number of patients screened
+data$n_next <- 10  # predictions (10 more data)
+
+data$alpha <- 1
+data$beta  <- 10
+
+jm <- jags.model(file=modelpath_e4, data=data, n.chains=1, n.adapt=500)
+
+update(jm, 1000)
+chain <- coda.samples(jm, c("p", "y"), n.iter=10000)
+print(summary(chain))
+
+# Correlation matrix
+cat("Correlation matrix: \n")
+as.data.frame(as.mcmc(chain)) %>%
+  cor() %>%
+  print()
+
+chain_e6 <- chainR6$new(chain, param='p')
 
 ```
 
+```{r}
 
+chain_e6$traceplot()
+chain_e6$density()
+chain_e6$running()
+chain_e6$autocorrelation()
 
+```
 
+```{r, warning=FALSE}
 
+chain_e6$inference(y.cred.int=1.25)
+chain_e6$prediction(binomial=TRUE, n.next=data$n_next)
+chain_e6$correlation(x.min=0, x.max=0.25, y.min=0, y.max=data$n_next)
+
+```
+
+### Find the bayesian estimator for _p_, the posterior mean and variance, and a 95% credible interval
+
+In the Bayesian approach, the estimator for $p$ is the posterior mean. 
+```{r}
+p_estimate <- chain_e6$chain.ggs %>%
+  filter(
+    Parameter=='p'
+  ) %>%
+  summarise(
+    Mean = mean(value),
+    Variance = var(value)
+  )
+
+cat('Bayesian estimator for p:', p_estimate$Mean)
+
+```
+
+Notice that the bayesian estimator for $p$ found running MCMC is almost identical to the analytical result obtained in point (c) of exercise 3. The following table shows that the same is true for the other properties of the distribution, such as the variance and the credibility interval.
+
+```{r}
+
+p_estimate['Cred.Int.Low'] <- chain_e6$cred.int[1] 
+p_estimate['Cred.Int.High'] <- chain_e6$cred.int[2] 
+
+p_estimate %>%
+  kable(caption="Results of MCMC; posterior distribution of p") %>%
+  kable_styling(full_width=FALSE)
+
+```
+It is also possible to plot the analytical posterior above the histogram obtained running MCMC, to have a visual comparison of the 2 distributions. 
+
+```{r}
+
+tmp <- chain_e6$chain.ggs %>%
+        filter(Parameter=='p') %>%
+  summarise(
+    min = min(value), 
+    max = max(value), 
+    len = length(value)
+  )
+
+x <- seq(tmp$min, tmp$max, length=tmp$len)
+
+chain_e6$inference(y.cred.int=1.25) +
+  geom_line(aes(x, dbeta(x, alpha.water, beta.water), color='Analytical Posterior'), size=0.8)+
+  scale_color_manual('', values=c('Analytical Posterior'='navyblue'))+
+  theme(legend.position='bottom')
+
+```
 
 

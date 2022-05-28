@@ -24,8 +24,6 @@ Below you can find all the exercises carried out during the course. To download 
   * Frequentist and Bayesian estimator
   * Hypotesis Testing
   * MCMC with JAGS (Just Another Gibbs Sampler)
-* [Exercises R Laboratory 07](./AS4PA_Solutions/exercises_rlab_07.html) <br>
-  Not yet assigned...
 
 
 # Statistical Mechanics of Complex Systems projects
