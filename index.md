@@ -28,6 +28,10 @@ Below you can find all the exercises carried out during the course. To download 
 
 # Statistical Mechanics of Complex Systems projects
 [Application of the MaxEnt Principle](./Complex_Systems_Projects/Application-of-the-MaxEnt-Principle.html) <br>
-The MaxEnt principle can be used to find the less biased probability distribution compatible with a set of constraints, by maximizing the Shannon entropy subject to these constraints. In this project I apply the MaxEnt principle to some data, genered according to a known distribution, using the measured k-th moments as constraints. I start with a simple discrete case and then move on to well-known continuous distributions such as the Gaussian and the Exponential.
+The MaxEnt principle can be used to find the less biased probability distribution compatible with a set of constraints, by maximizing the Shannon entropy subject to these constraints. In this project I apply the MaxEnt principle to some data, genered according to a known distribution, using the measured k-th moments as constraints. I consider only one simple discrete case, but in the future it would be interesting to apply this study on well-known continuous distributions such as the Gaussian and the Exponential.
 
+[Noise-induced schooling of fish](./Complex_Systems_Projects/Schooling-of-Fish.html) <br>
+In this project we want to simulate the dynamics of schools of fish and compare the results with those shown in the article [ Noise-induced schooling of fish](https://doi.org/10.1038/s41567-020-0787-y). In particular, we focus on a mean field model based on pairwise interactions. 
+
+The project was carried out together with [Alberto Coppi](https://github.com/c0pp1).
 
